@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 import subprocess
+import getpass
 import pytest
 
 
@@ -45,7 +46,7 @@ def test_dash_dash_help_reports_help_on_stdout(call_dog, capfd):
 def test_user_is_me(call_centos7, capfd):
     call_centos7('id')
     captured = capfd.readouterr()
-    assert 'uid=1000(rtol)' in captured.out
+    assert f'uid=1000({getpass.getuser()})' in captured.out
 
 
 def test_as_root(call_centos7, capfd):

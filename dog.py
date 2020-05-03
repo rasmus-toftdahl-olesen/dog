@@ -12,7 +12,8 @@ from typing import Optional, List, Dict
 REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
 
-DogConfig = Dict[str,str]
+DogConfig = Dict[str, str]
+
 
 def default_config() -> DogConfig:
     return {'sudo-outside-docker': False,
@@ -30,6 +31,7 @@ def default_config() -> DogConfig:
             'as-root': False,
             'pull': False}
 
+
 def find_dog_config() -> Optional[Path]:
     cur = Path.cwd() / CONFIG_FILE
     for parent in cur.parents:
@@ -38,7 +40,8 @@ def find_dog_config() -> Optional[Path]:
             return dog_config
     return None
 
-def read_dog_config(dog_config = find_dog_config()) -> DogConfig:
+
+def read_dog_config(dog_config=find_dog_config()) -> DogConfig:
     if dog_config is None:
         image = 'esw/serverscripts/forge'
         return {'image': image, 'registry': REGISTRY}
@@ -47,12 +50,13 @@ def read_dog_config(dog_config = find_dog_config()) -> DogConfig:
         config.read(dog_config)
         return dict(config['dog'])
 
+
 def parse_command_line_args() -> DogConfig:
     parser = argparse.ArgumentParser(description='Docker run wrapper to make it easier to call commands.')
     parser.add_argument('args', type=str, nargs='+', help='Command to call inside docker (with arguments)')
     parser.add_argument('--pull', dest='pull', action='store_true', help='Pull the latest version of the docker image')
     parser.add_argument('--interactive', dest='interactive', action='store_true', help='Run interactive (allocate a pseudo terminal inside the docker image)')
-    parser.add_argument('--as-root', dest='as_root', action='store_true', help='Run as root inside the docker')
+    parser.add_argument('--as-root', dest='as-root', action='store_true', help='Run as root inside the docker')
 
     # Insert the needed -- to seperate dog args with the rest of the commands
     # But only if the user did not do it himself
@@ -68,6 +72,7 @@ def parse_command_line_args() -> DogConfig:
                 break
     args = parser.parse_args(argv)
     return vars(args)
+
 
 def get_env_config(**extra) -> DogConfig:
     config = {}
@@ -92,14 +97,14 @@ def get_env_config(**extra) -> DogConfig:
         config['user'] = os.getenv('USER')
 
     config['p4user'] = os.getenv('P4USER', config['user'])
-    
+
     if sys.platform == 'win32':
         config['cwd'] = '/c/' + os.getcwd().replace('\\', '/')[2:]
     else:
         config['cwd'] = os.getcwd()
 
     if sys.platform == 'win32':
-        config['volumes'] = {'c:\\' : '/c',
+        config['volumes'] = {'c:\\': '/c',
                              f'{Path.home() / "dog_p4tickets.txt"}': f'{config["home"]}/.p4tickets:ro'}
     else:
         config['volumes'] = {'/scratch': '/scratch',
@@ -108,6 +113,7 @@ def get_env_config(**extra) -> DogConfig:
     config['volumes'][f'{Path.home() / ".ssh"}'] = f'{config["home"]}/.ssh:ro'
 
     return config
+
 
 def run(config: DogConfig):
     assert config['full-image'] is not None, 'You need to at least specify the full_image.'
@@ -124,28 +130,28 @@ def run(config: DogConfig):
 
     for outside, inside in config['volumes'].items():
         args += ['-v', f'{outside}:{inside}']
-    
+
     if config['interactive']:
         args.append('-it')
 
     if not config['as-root']:
-        args.extend ( ['-e', f'USER={config["user"]}',
-                       '-e', f'P4USER={config["p4user"]}'] )
-    
+        args.extend(['-e', f'USER={config["user"]}',
+                     '-e', f'P4USER={config["p4user"]}'])
+
     args.append(config['full-image'])
     actual_command = ' '.join(config['args'])
     add_user = f'useradd -u {config["uid"]} -g {config["gid"]} -c Self -d {config["home"]} -s /bin/bash -M -N {config["user"]}'
     chown_home = f'chown {config["uid"]}:{config["gid"]} {config["home"]}'
     cd_cwd = f"cd '{config['cwd']}'"
     init = f'{add_user} && {chown_home} && {cd_cwd}'
-    
+
     if config['as-root']:
         args.extend(['bash', '-c', f"{init} && {actual_command}"])
     else:
         args.extend(['bash', '-c', f"{init} && exec /usr/bin/sudo -u {config['user']} --preserve-env=PATH,P4PORT,P4USER -- /bin/bash -c 'LANG=en_US.UTF-8 {actual_command}'"])
 
     try:
-        proc = subprocess.run (args)
+        proc = subprocess.run(args)
         return proc.returncode
     except KeyboardInterrupt:
         print('Dog received Ctrl+C')
@@ -154,12 +160,12 @@ def run(config: DogConfig):
 
 if __name__ == '__main__':
     config = default_config()
-    config.update ( get_env_config() )
+    config.update(get_env_config())
     user_config = Path.home() / '.dog.config'
     if user_config.is_file():
-        config.update ( read_dog_config(user_config) )
-    config.update ( read_dog_config() )
-    config.update ( parse_command_line_args() )
+        config.update(read_dog_config(user_config))
+    config.update(read_dog_config())
+    config.update(parse_command_line_args())
 
     if 'full-image' not in config:
         config['full-image'] = config['registry'] + '/' + config['image']

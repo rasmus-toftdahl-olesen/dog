@@ -43,6 +43,10 @@ def test_dash_dash_help_reports_help_on_stdout(call_dog, capfd):
     assert 'error' not in captured.err
 
 
+def test_pull_latest_just_in_case(call_centos7, capfd):
+    assert call_centos7('--pull', 'echo', 'Up-to-date') == 0
+
+
 def test_user_is_me(call_centos7, capfd):
     assert call_centos7('id') == 0
     captured = capfd.readouterr()

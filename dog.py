@@ -170,7 +170,12 @@ if __name__ == '__main__':
 
     if config['pull']:
         try:
-            proc = subprocess.run(list(DOCKER) + ['pull', config['full-image']])
+            args = []
+            if config['sudo-outside-docker']:
+                args += ['sudo']
+            args += ['docker']
+            args += ['pull', config['full-image']]
+            proc = subprocess.run(args)
             if proc.returncode != 0:
                 print(f'ERROR {proc.returncode} while pulling:')
                 print(proc.stdout)

@@ -17,7 +17,7 @@ def call_dog(my_dog, tmp_path):
         cmd_line = [sys.executable, str(my_dog)]
         for arg in args:
             cmd_line.append(str(arg))
-        subprocess.run(cmd_line, cwd=tmp_path)
+        return subprocess.run(cmd_line, cwd=tmp_path).returncode
 
     yield call
 
@@ -25,7 +25,7 @@ def call_dog(my_dog, tmp_path):
 @pytest.fixture
 def call_centos7(call_dog, tmp_path):
     dog_config = tmp_path / 'dog.config'
-    dog_config.write_text('[dog]\nimage=esw/serverscripts/forge\n')
+    dog_config.write_text('[dog]\nimage=teamtc/dog/centos-for-dog\n')
     return call_dog
 
 
@@ -44,7 +44,7 @@ def test_dash_dash_help_reports_help_on_stdout(call_dog, capfd):
 
 
 def test_user_is_me(call_centos7, capfd):
-    call_centos7('id')
+    assert call_centos7('id') == 0
     captured = capfd.readouterr()
     assert f'uid=1000({getpass.getuser()})' in captured.out
 

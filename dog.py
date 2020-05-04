@@ -17,9 +17,11 @@ DogConfig = Dict[str, str]
 
 def default_config() -> DogConfig:
     return {'sudo-outside-docker': False,
+            'exposed-dog-variables': ['uid', 'gid', 'user', 'group', 'home', 'as-root'],
             'uid': 1000,
             'gid': 1000,
             'user': 'nobody',
+            'group': 'nogroup',
             'home': '/home/nobody',
             'p4user': 'nobody',
             'cwd': '/home/nobody',
@@ -80,6 +82,7 @@ def get_env_config(**extra) -> DogConfig:
         config['uid'] = 1000
         config['gid'] = 1000
         config['user'] = os.getenv('USERNAME')
+        config['group'] = 'oticon'
         config['home'] = f'/home/{config["user"]}'
         # Write a unix version of the p4tickets.txt file
         win_version = Path.home() / 'p4tickets.txt'
@@ -95,6 +98,7 @@ def get_env_config(**extra) -> DogConfig:
         config['gid'] = os.getgid()
         config['home'] = os.getenv('HOME')
         config['user'] = os.getenv('USER')
+        config['group'] = os.getenv('GROUP')
 
     config['p4user'] = os.getenv('P4USER', config['user'])
 
@@ -124,7 +128,6 @@ def run(config: DogConfig):
     args += ['docker']
     args += ['run',
              '--rm',
-             '--entrypoint=',
              '--hostname=kbnuxdockerrtol',
              '-w', config['cwd']]
 
@@ -138,17 +141,12 @@ def run(config: DogConfig):
         args.extend(['-e', f'USER={config["user"]}',
                      '-e', f'P4USER={config["p4user"]}'])
 
-    args.append(config['full-image'])
-    actual_command = ' '.join(config['args'])
-    add_user = f'useradd -u {config["uid"]} -g {config["gid"]} -c Self -d {config["home"]} -s /bin/bash -M -N {config["user"]}'
-    chown_home = f'chown {config["uid"]}:{config["gid"]} {config["home"]}'
-    cd_cwd = f"cd '{config['cwd']}'"
-    init = f'{add_user} && {chown_home} && {cd_cwd}'
+    for name in config['exposed-dog-variables']:
+        env_name = name.upper().replace('-', '_')
+        args.extend(['-e', f'DOG_{env_name}={config[name]}'])
 
-    if config['as-root']:
-        args.extend(['bash', '-c', f"{init} && {actual_command}"])
-    else:
-        args.extend(['bash', '-c', f"{init} && exec /usr/bin/sudo -u {config['user']} --preserve-env=PATH,P4PORT,P4USER -- /bin/bash -c 'LANG=en_US.UTF-8 {actual_command}'"])
+    args.append(config['full-image'])
+    args.extend(config['args'])
 
     try:
         proc = subprocess.run(args)

@@ -1,10 +1,13 @@
 import sys
+import os
 from pathlib import Path
 from typing import Sequence
 import subprocess
 import getpass
 import re
 import pytest
+
+DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)
 
 
 @pytest.fixture
@@ -24,7 +27,7 @@ def my_dog():
 @pytest.fixture
 def call_dog(my_dog, tmp_path):
     def call(*args: Sequence[object]):
-        cmd_line = [sys.executable, str(my_dog)]
+        cmd_line = [DOG_PYTHON_UNDER_TEST, str(my_dog)]
         for arg in args:
             cmd_line.append(str(arg))
         return subprocess.run(cmd_line, cwd=tmp_path).returncode
@@ -42,9 +45,9 @@ def call_centos7(call_dog, tmp_path):
 @pytest.fixture
 def call_shell(call_centos7, tmp_path, my_dog, monkeypatch):
     if 'win32' in sys.platform:
-        monkeypatch.setenv('DOG', f'"{sys.executable}" "{my_dog}"')
+        monkeypatch.setenv('DOG', f'"{DOG_PYTHON_UNDER_TEST}" "{my_dog}"')
     else:
-        monkeypatch.setenv('DOG', f'{sys.executable} {my_dog}')
+        monkeypatch.setenv('DOG', f'{DOG_PYTHON_UNDER_TEST} {my_dog}')
 
     def call(shell_string: str):
         return subprocess.run(shell_string, shell=True, cwd=tmp_path)

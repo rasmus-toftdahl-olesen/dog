@@ -10,7 +10,7 @@ from typing import Optional, List, Dict, Union
 
 REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
-VERSION = 1
+VERSION = 2
 
 DogConfig = Dict[str, Union[str, List[str], Dict[str, str]]]
 
@@ -50,7 +50,7 @@ def read_dog_config(dog_config=find_dog_config()) -> DogConfig:
         return {'image': image, 'registry': REGISTRY}
     else:
         config = configparser.ConfigParser()
-        config.read(dog_config)
+        config.read(str(dog_config))
         return dict(config['dog'])
 
 
@@ -65,7 +65,7 @@ def parse_command_line_args() -> DogConfig:
     terminal_group.add_argument('--terminal', dest='terminal', action='store_const', const=True, help='Allocate a pseudo terminal')
     terminal_group.add_argument('--no-terminal', dest='terminal', action='store_const', const=False, help='Do not allocate a pseudo terminal')
     parser.add_argument('--as-root', dest='as-root', action='store_const', const=True, help='Run as root inside the docker')
-    parser.add_argument('--version', action='version', version=f'dog version {VERSION}')
+    parser.add_argument('--version', action='version', version='dog version {}'.format(VERSION))
 
     # Insert the needed -- to seperate dog args with the rest of the commands
     # But only if the user did not do it himself
@@ -99,7 +99,7 @@ def get_env_config(**extra) -> DogConfig:
         config['gid'] = 1000
         config['user'] = os.getenv('USERNAME')
         config['group'] = 'oticon'
-        config['home'] = f'/home/{config["user"]}'
+        config['home'] = '/home/' + config["user"]
         # Write a unix version of the p4tickets.txt file
         win_version = Path.home() / 'p4tickets.txt'
         unix_verison = Path.home() / 'dog_p4tickets.txt'
@@ -125,12 +125,12 @@ def get_env_config(**extra) -> DogConfig:
 
     if sys.platform == 'win32':
         config['volumes'] = {'c:\\': '/c',
-                             f'{Path.home() / "dog_p4tickets.txt"}': f'{config["home"]}/.p4tickets:ro'}
+                             str(Path.home() / "dog_p4tickets.txt"): config["home"] + '/.p4tickets:ro'}
     else:
         config['volumes'] = {'/scratch': '/scratch',
                              '/tc/w': '/tc/w',
-                             f'{Path.home() / ".p4tickets"}': f'{config["home"]}/.p4tickets:ro'}
-    config['volumes'][f'{Path.home() / ".ssh"}'] = f'{config["home"]}/.ssh:ro'
+                             str(Path.home() / ".p4tickets"): config["home"] + '/.p4tickets:ro'}
+    config['volumes'][str(Path.home() / ".ssh")] = config["home"] + '/.ssh:ro'
 
     return config
 
@@ -148,7 +148,7 @@ def run(config: DogConfig):
              '-w', config['cwd']]
 
     for outside, inside in config['volumes'].items():
-        args += ['-v', f'{outside}:{inside}']
+        args += ['-v', outside + ':' + inside]
 
     if config['interactive']:
         args.append('-i')
@@ -157,12 +157,12 @@ def run(config: DogConfig):
         args.append('-t')
 
     if not config['as-root']:
-        args.extend(['-e', f'USER={config["user"]}',
-                     '-e', f'P4USER={config["p4user"]}'])
+        args.extend(['-e', 'USER=' + config["user"],
+                     '-e', 'P4USER=' + config["p4user"]])
 
     for name in config['exposed-dog-variables']:
         env_name = name.upper().replace('-', '_')
-        args.extend(['-e', f'DOG_{env_name}={config[name]}'])
+        args.extend(['-e', 'DOG_{}={}'.format(env_name, config[name])])
 
     args.append(config['full-image'])
     args.extend(config['args'])
@@ -196,7 +196,7 @@ if __name__ == '__main__':
             args += ['pull', config['full-image']]
             proc = subprocess.run(args)
             if proc.returncode != 0:
-                print(f'ERROR {proc.returncode} while pulling:')
+                print('ERROR {}} while pulling:'.format(proc.returncode))
                 print(proc.stdout)
                 print(proc.stderr)
                 sys.exit(proc.returncode)

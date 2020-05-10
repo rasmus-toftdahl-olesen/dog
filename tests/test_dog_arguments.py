@@ -8,6 +8,15 @@ import pytest
 
 
 @pytest.fixture
+def capstrip(capfd):
+    class CapStrip:
+        def get(self):
+            return tuple(a.strip() for a in capfd.readouterr())
+
+    return CapStrip()
+
+
+@pytest.fixture
 def my_dog():
     return (Path(__file__).parent.parent / 'dog.py').absolute()
 
@@ -54,7 +63,7 @@ def test_dash_dash_help_reports_help_on_stdout(call_dog, capfd):
     assert 'error' not in captured.err
 
 
-def test_pull_latest_just_in_case(call_centos7, capfd):
+def test_pull_latest_just_in_case(call_centos7):
     assert call_centos7('--pull', 'echo', 'Up-to-date') == 0
 
 
@@ -70,11 +79,11 @@ def test_as_root(call_centos7, capfd):
     assert 'uid=0(root)' in captured.out
 
 
-def test_pull_as_echo_argument(call_centos7, capfd):
+def test_pull_as_echo_argument(call_centos7, capstrip):
     '''--pull should only be interpreted as an dog argument if it comes before the first argument'''
     call_centos7('echo', '-n', '--pull')
-    captured = capfd.readouterr()
-    assert '--pull' == captured.out
+    captured = capstrip.get()
+    assert ('--pull', '') == captured
 
 
 def test_version(call_dog, capfd):
@@ -84,15 +93,15 @@ def test_version(call_dog, capfd):
     assert re.match('dog version [0-9]+', captured.out)
 
 
-def test_stdin_testing_works(call_shell, capfd):
+def test_stdin_testing_works(call_shell, capstrip):
     '''Just verifying that my stdin testing works before testing it with dog.'''
     call_shell('echo hello world | cat -')
-    captured = capfd.readouterr()
-    assert 'hello world' == captured.out.strip()
+    captured = capstrip.get()
+    assert ('hello world', '') == captured
 
 
-def test_stdin(call_shell, capfd):
+def test_stdin(call_shell, capstrip):
     '''stdin should be available from inside dog.'''
-    call_shell('echo hello world | %DOG% cat -')
-    captured = capfd.readouterr()
-    assert 'hello world' == captured.out.strip()
+    call_shell('echo hello world| %DOG% cat')
+    captured = capstrip.get()
+    assert ('hello world', '') == captured

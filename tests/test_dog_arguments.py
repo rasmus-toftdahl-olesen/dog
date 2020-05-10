@@ -41,12 +41,23 @@ def call_centos7(call_dog, tmp_path):
 
 @pytest.fixture
 def call_shell(call_centos7, tmp_path, my_dog, monkeypatch):
-    monkeypatch.setenv('DOG', f'"{sys.executable}" "{my_dog}"')
+    if 'win32' in sys.platform:
+        monkeypatch.setenv('DOG', f'"{sys.executable}" "{my_dog}"')
+    else:
+        monkeypatch.setenv('DOG', f'{sys.executable} {my_dog}')
 
     def call(shell_string: str):
         return subprocess.run(shell_string, shell=True, cwd=tmp_path)
 
     return call
+
+
+@pytest.fixture
+def dog_env():
+    if 'win32' in sys.platform:
+        return '%DOG%'
+    else:
+        return '$DOG'
 
 
 def test_no_arguments_reports_help_on_stderr(call_dog, capfd):
@@ -100,11 +111,8 @@ def test_stdin_testing_works(call_shell, capstrip):
     assert ('hello world', '') == captured
 
 
-def test_stdin(call_shell, capstrip):
+def test_stdin(call_shell, capstrip, dog_env):
     '''stdin should be available from inside dog.'''
-    if 'win32' in sys.platform:
-        call_shell('echo hello world | %DOG% cat')
-    else:
-        call_shell('echo hello world | $DOG cat')
+    call_shell(f'echo hello world | {dog_env} cat')
     captured = capstrip.get()
     assert ('hello world', '') == captured

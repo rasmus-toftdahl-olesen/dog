@@ -3,17 +3,16 @@
 import sys
 import os
 import subprocess
-from socket import gethostname
 from pathlib import Path
 import configparser
 import argparse
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 
 REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
 VERSION = 1
 
-DogConfig = Dict[str, str]
+DogConfig = Dict[str, Union[str, List[str], Dict[str, str]]]
 
 
 def default_config() -> DogConfig:
@@ -31,6 +30,7 @@ def default_config() -> DogConfig:
             'image': 'alpine',
             'registry': REGISTRY,
             'interactive': True,
+            'terminal': False,
             'as-root': False,
             'pull': False}
 
@@ -57,9 +57,14 @@ def read_dog_config(dog_config=find_dog_config()) -> DogConfig:
 def parse_command_line_args() -> DogConfig:
     parser = argparse.ArgumentParser(description='Docker run wrapper to make it easier to call commands.')
     parser.add_argument('args', type=str, nargs='+', help='Command to call inside docker (with arguments)')
-    parser.add_argument('--pull', dest='pull', action='store_true', help='Pull the latest version of the docker image')
-    parser.add_argument('--interactive', dest='interactive', action='store_true', help='Run interactive (allocate a pseudo terminal inside the docker image)')
-    parser.add_argument('--as-root', dest='as-root', action='store_true', help='Run as root inside the docker')
+    parser.add_argument('--pull', dest='pull', action='store_const', const=True, help='Pull the latest version of the docker image')
+    interactive_group = parser.add_mutually_exclusive_group()
+    interactive_group.add_argument('--interactive', dest='interactive', action='store_const', const=True, help='Run interactive (keep stdin open)')
+    interactive_group.add_argument('--not-interactive', dest='interactive', action='store_const', const=False, help='Do not run interactive')
+    terminal_group = parser.add_mutually_exclusive_group()
+    terminal_group.add_argument('--terminal', dest='terminal', action='store_const', const=True, help='Allocate a pseudo terminal')
+    terminal_group.add_argument('--no-terminal', dest='terminal', action='store_const', const=False, help='Do not allocate a pseudo terminal')
+    parser.add_argument('--as-root', dest='as-root', action='store_const', const=True, help='Run as root inside the docker')
     parser.add_argument('--version', action='version', version=f'dog version {VERSION}')
 
     # Insert the needed -- to seperate dog args with the rest of the commands
@@ -75,7 +80,16 @@ def parse_command_line_args() -> DogConfig:
                 argv.insert(index, '--')
                 break
     args = parser.parse_args(argv)
-    return vars(args)
+    config = vars(args)
+    if config['pull'] is None:
+        del config['pull']
+    if config['terminal'] is None:
+        del config['terminal']
+    if config['interactive'] is None:
+        del config['interactive']
+    if config['as-root'] is None:
+        del config['as-root']
+    return config
 
 
 def get_env_config(**extra) -> DogConfig:
@@ -137,7 +151,10 @@ def run(config: DogConfig):
         args += ['-v', f'{outside}:{inside}']
 
     if config['interactive']:
-        args.append('-it')
+        args.append('-i')
+
+    if config['terminal']:
+        args.append('-t')
 
     if not config['as-root']:
         args.extend(['-e', f'USER={config["user"]}',

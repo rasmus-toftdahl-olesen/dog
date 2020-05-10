@@ -30,6 +30,16 @@ def call_centos7(call_dog, tmp_path):
     return call_dog
 
 
+@pytest.fixture
+def call_shell(call_centos7, tmp_path, my_dog, monkeypatch):
+    monkeypatch.setenv('DOG', f'"{sys.executable}" "{my_dog}"')
+
+    def call(shell_string: str):
+        return subprocess.run(shell_string, shell=True, cwd=tmp_path)
+
+    return call
+
+
 def test_no_arguments_reports_help_on_stderr(call_dog, capfd):
     call_dog()
     captured = capfd.readouterr()
@@ -72,3 +82,17 @@ def test_version(call_dog, capfd):
     call_dog('--version')
     captured = capfd.readouterr()
     assert re.match('dog version [0-9]+', captured.out)
+
+
+def test_stdin_testing_works(call_shell, capfd):
+    '''Just verifying that my stdin testing works before testing it with dog.'''
+    call_shell('echo hello world | cat -')
+    captured = capfd.readouterr()
+    assert 'hello world' == captured.out.strip()
+
+
+def test_stdin(call_shell, capfd):
+    '''stdin should be available from inside dog.'''
+    call_shell('echo hello world | %DOG% cat -')
+    captured = capfd.readouterr()
+    assert 'hello world' == captured.out.strip()

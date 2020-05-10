@@ -11,6 +11,7 @@ from typing import Optional, List, Dict
 
 REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
+VERSION = 1
 
 DogConfig = Dict[str, str]
 
@@ -59,6 +60,7 @@ def parse_command_line_args() -> DogConfig:
     parser.add_argument('--pull', dest='pull', action='store_true', help='Pull the latest version of the docker image')
     parser.add_argument('--interactive', dest='interactive', action='store_true', help='Run interactive (allocate a pseudo terminal inside the docker image)')
     parser.add_argument('--as-root', dest='as-root', action='store_true', help='Run as root inside the docker')
+    parser.add_argument('--version', action='version', version=f'dog version {VERSION}')
 
     # Insert the needed -- to seperate dog args with the rest of the commands
     # But only if the user did not do it himself

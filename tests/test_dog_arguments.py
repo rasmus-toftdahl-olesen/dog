@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Sequence
 import subprocess
 import getpass
+import re
 import pytest
 
 
@@ -64,3 +65,10 @@ def test_pull_as_echo_argument(call_centos7, capfd):
     call_centos7('echo', '-n', '--pull')
     captured = capfd.readouterr()
     assert '--pull' == captured.out
+
+
+def test_version(call_dog, capfd):
+    '''--version should just return the current dog version'''
+    call_dog('--version')
+    captured = capfd.readouterr()
+    assert re.match('dog version [0-9]+', captured.out)

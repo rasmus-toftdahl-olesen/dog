@@ -102,6 +102,9 @@ def test_stdin_testing_works(call_shell, capstrip):
 
 def test_stdin(call_shell, capstrip):
     '''stdin should be available from inside dog.'''
-    call_shell('echo hello world| %DOG% cat')
+    if 'win32' in sys.platform:
+        call_shell('echo hello world | %DOG% cat')
+    else:
+        call_shell('echo hello world | $DOG cat')
     captured = capstrip.get()
     assert ('hello world', '') == captured

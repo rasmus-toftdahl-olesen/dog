@@ -84,7 +84,7 @@ def test_pull_latest_just_in_case(call_centos7):
 def test_user_is_me(call_centos7, capfd):
     assert call_centos7('id') == 0
     captured = capfd.readouterr()
-    assert f'uid=1000({getpass.getuser()})' in captured.out
+    assert f'uid={os.getuid()}({getpass.getuser()})' in captured.out
 
 
 def test_as_root(call_centos7, capfd):

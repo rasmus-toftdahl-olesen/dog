@@ -4,7 +4,7 @@ if [[ ! -d $DOG_HOME ]]; then
     mkdir -p $DOG_HOME
 fi
 
-if ! grep "$DOG_GROUP:x:$DOG_GID" /etc/group; then
+if ! grep -q "$DOG_GROUP:x:$DOG_GID" /etc/group; then
     groupadd -g $DOG_GID $DOG_GROUP
 fi
 useradd -u $DOG_UID -g $DOG_GID -c Self -d $DOG_HOME -s /bin/bash -M -N $DOG_USER

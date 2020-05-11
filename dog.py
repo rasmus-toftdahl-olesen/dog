@@ -10,7 +10,7 @@ from typing import Optional, List, Dict, Union
 
 REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
-VERSION = 2
+VERSION = 3
 
 DogConfig = Dict[str, Union[str, List[str], Dict[str, str]]]
 
@@ -110,11 +110,12 @@ def get_env_config(**extra) -> DogConfig:
             unix_version.write_text('')
 
     else:
+        import grp
         config['uid'] = os.getuid()
         config['gid'] = os.getgid()
         config['home'] = os.getenv('HOME')
         config['user'] = os.getenv('USER')
-        config['group'] = os.getenv('GROUP')
+        config['group'] = grp.getgrgid(config['gid']).gr_name
 
     config['p4user'] = os.getenv('P4USER', config['user'])
 

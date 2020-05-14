@@ -20,6 +20,14 @@ def capstrip(capfd):
 
 
 @pytest.fixture
+def uid():
+    if 'win32' in sys.platform:
+        return 1000
+    else:
+        return os.getuid()
+
+
+@pytest.fixture
 def my_dog():
     return (Path(__file__).parent.parent / 'dog.py').absolute()
 
@@ -81,10 +89,10 @@ def test_pull_latest_just_in_case(call_centos7):
     assert call_centos7('--pull', 'echo', 'Up-to-date') == 0
 
 
-def test_user_is_me(call_centos7, capfd):
+def test_user_is_me(call_centos7, capfd, uid):
     assert call_centos7('id') == 0
     captured = capfd.readouterr()
-    assert f'uid={os.getuid()}({getpass.getuser()})' in captured.out
+    assert f'uid={uid}({getpass.getuser()})' in captured.out
 
 
 def test_as_root(call_centos7, capfd):

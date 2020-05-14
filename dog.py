@@ -197,7 +197,7 @@ if __name__ == '__main__':
             args += ['pull', config['full-image']]
             proc = subprocess.run(args)
             if proc.returncode != 0:
-                print('ERROR {}} while pulling:'.format(proc.returncode))
+                print('ERROR {} while pulling:'.format(proc.returncode))
                 print(proc.stdout)
                 print(proc.stderr)
                 sys.exit(proc.returncode)

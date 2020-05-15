@@ -115,6 +115,14 @@ def test_version(call_dog, capfd):
     assert re.match('dog version [0-9]+', captured.out)
 
 
+def test_verbose(call_dog, capfd):
+    '''--verbose should report the actual setup'''
+    call_dog('--verbose', 'id')
+    captured = capfd.readouterr()
+    assert f'Dog Config' in captured.out
+    assert "'verbose': True" in captured.out
+
+
 def test_stdin_testing_works(call_shell, capstrip):
     '''Just verifying that my stdin testing works before testing it with dog.'''
     call_shell('echo hello world | cat -')

@@ -7,12 +7,26 @@ from pathlib import Path
 import configparser
 import argparse
 from typing import Optional, List, Dict, Union
+import pprint
 
 REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
 VERSION = 3
 
 DogConfig = Dict[str, Union[str, List[str], Dict[str, str]]]
+
+
+def log_verbose(config: DogConfig, txt: str):
+    if config['verbose']:
+        print(txt)
+
+
+def log_config(name: str, config: DogConfig, filename: Path = None):
+    if filename:
+        print('{} Config ({}):'.format(name, filename))
+    else:
+        print('{} Config:'.format(name))
+    pprint.pprint(config, indent=4)
 
 
 def default_config() -> DogConfig:
@@ -32,7 +46,8 @@ def default_config() -> DogConfig:
             'interactive': True,
             'terminal': False,
             'as-root': False,
-            'pull': False}
+            'pull': False,
+            'verbose': False}
 
 
 def find_dog_config() -> Optional[Path]:
@@ -66,6 +81,7 @@ def parse_command_line_args() -> DogConfig:
     terminal_group.add_argument('--no-terminal', dest='terminal', action='store_const', const=False, help='Do not allocate a pseudo terminal')
     parser.add_argument('--as-root', dest='as-root', action='store_const', const=True, help='Run as root inside the docker')
     parser.add_argument('--version', action='version', version='dog version {}'.format(VERSION))
+    parser.add_argument('--verbose', dest='verbose', action='store_const', const=True, help='Provide more dog output (useful for debugging)')
 
     # Insert the needed -- to seperate dog args with the rest of the commands
     # But only if the user did not do it himself
@@ -89,6 +105,8 @@ def parse_command_line_args() -> DogConfig:
         del config['interactive']
     if config['as-root'] is None:
         del config['as-root']
+    if config['verbose'] is None:
+        del config['verbose']
     return config
 
 
@@ -102,10 +120,10 @@ def get_env_config(**extra) -> DogConfig:
         config['home'] = '/home/' + config["user"]
         # Write a unix version of the p4tickets.txt file
         win_version = Path.home() / 'p4tickets.txt'
-        unix_verison = Path.home() / 'dog_p4tickets.txt'
+        unix_version = Path.home() / 'dog_p4tickets.txt'
         if win_version.exists():
             # Convert windows line endings to unix line endings
-            unix_verison.write_bytes(win_version.read_text().encode('ascii'))
+            unix_version.write_bytes(win_version.read_text().encode('ascii'))
         else:
             unix_version.write_text('')
 
@@ -168,6 +186,7 @@ def run(config: DogConfig):
     args.append(config['full-image'])
     args.extend(config['args'])
 
+    log_verbose(config, ' '.join(args))
     try:
         proc = subprocess.run(args)
         return proc.returncode
@@ -177,13 +196,28 @@ def run(config: DogConfig):
 
 
 if __name__ == '__main__':
-    config = default_config()
-    config.update(get_env_config())
-    user_config = Path.home() / '.dog.config'
-    if user_config.is_file():
-        config.update(read_dog_config(user_config))
-    config.update(read_dog_config())
-    config.update(parse_command_line_args())
+    default_conf = default_config()
+    env_config = get_env_config()
+    user_config_file = Path.home() / '.dog.config'
+    user_config = None
+    if user_config_file.is_file():
+        user_config = read_dog_config(user_config_file)
+    dog_config = read_dog_config()
+    command_line_config = parse_command_line_args()
+
+    config = default_conf
+    config.update(env_config)
+    if user_config:
+        config.update(user_config)
+    config.update(dog_config)
+    config.update(command_line_config)
+
+    if config['verbose']:
+        log_config('Default', default_conf)
+        log_config('Environment', env_config)
+        log_config('User', user_config, user_config_file)
+        log_config('Dog', dog_config, find_dog_config())
+        log_config('Final', config)
 
     if 'full-image' not in config:
         config['full-image'] = config['registry'] + '/' + config['image']

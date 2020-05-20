@@ -205,7 +205,7 @@ if __name__ == '__main__':
     dog_config = read_dog_config()
     command_line_config = parse_command_line_args()
 
-    config = default_conf
+    config = default_conf.copy()
     config.update(env_config)
     if user_config:
         config.update(user_config)

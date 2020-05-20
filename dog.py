@@ -13,7 +13,7 @@ REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
 VERSION = 3
 
-DogConfig = Dict[str, Union[str, List[str], Dict[str, str]]]
+DogConfig = Dict[str, Union[str, int, bool, List[str], Dict[str, str]]]
 
 
 def log_verbose(config: DogConfig, txt: str):

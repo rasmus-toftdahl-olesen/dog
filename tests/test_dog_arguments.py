@@ -1,10 +1,11 @@
-import sys
-import os
-from pathlib import Path
-from typing import Sequence
-import subprocess
 import getpass
+import os
 import re
+import subprocess
+import sys
+from pathlib import Path
+from typing import Tuple
+
 import pytest
 
 DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)
@@ -13,14 +14,14 @@ DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)
 @pytest.fixture
 def capstrip(capfd):
     class CapStrip:
-        def get(self):
+        def get(self) -> Tuple[str, str]:
             return tuple(a.strip() for a in capfd.readouterr())
 
     return CapStrip()
 
 
 @pytest.fixture
-def uid():
+def uid() -> int:
     if 'win32' in sys.platform:
         return 1000
     else:
@@ -28,13 +29,13 @@ def uid():
 
 
 @pytest.fixture
-def my_dog():
+def my_dog() -> Path:
     return (Path(__file__).parent.parent / 'dog.py').absolute()
 
 
 @pytest.fixture
 def call_dog(my_dog, tmp_path):
-    def call(*args: Sequence[object]):
+    def call(*args: object):
         cmd_line = [DOG_PYTHON_UNDER_TEST, str(my_dog)]
         for arg in args:
             cmd_line.append(str(arg))

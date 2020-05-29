@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-import subprocess
-from pathlib import Path
-import configparser
 import argparse
-from typing import Optional, List, Dict, Union
+import configparser
+import os
 import pprint
+import subprocess
+import sys
+from pathlib import Path
+from typing import Optional, List, Dict, Union
 
 REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
@@ -54,7 +54,7 @@ def find_dog_config() -> Optional[Path]:
     cur = Path.cwd() / CONFIG_FILE
     for parent in cur.parents:
         dog_config = parent / CONFIG_FILE
-        if dog_config.exists():
+        if dog_config.is_file():
             return dog_config
     return None
 
@@ -110,7 +110,7 @@ def parse_command_line_args() -> DogConfig:
     return config
 
 
-def get_env_config(**extra) -> DogConfig:
+def get_env_config() -> DogConfig:
     config = {}
     if sys.platform == 'win32':
         config['uid'] = 1000
@@ -195,7 +195,7 @@ def run(config: DogConfig):
         return -1
 
 
-if __name__ == '__main__':
+def main() -> int:
     default_conf = default_config()
     env_config = get_env_config()
     user_config_file = Path.home() / '.dog.config'
@@ -237,7 +237,10 @@ if __name__ == '__main__':
                 sys.exit(proc.returncode)
         except KeyboardInterrupt:
             print('Dog received Ctrl+C')
-            sys.exit(-1)
+            return -1
 
-    returncode = run(config)
-    sys.exit(returncode)
+    return run(config)
+
+
+if __name__ == '__main__':
+    sys.exit(main())

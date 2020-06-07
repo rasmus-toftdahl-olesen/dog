@@ -180,7 +180,7 @@ def run(config: DogConfig):
             drive = Path(config['win32-cwd']).drive
             config['volumes'][drive + '\\'] = '/' + drive[0]
         else:
-            mount_point = find_mount_point(Path(config['cwd']))
+            mount_point = str(find_mount_point(Path(config['cwd'])))
             config['volumes'][mount_point] = mount_point
 
     args = []

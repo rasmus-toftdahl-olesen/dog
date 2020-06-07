@@ -12,7 +12,7 @@ from typing import Optional, List, Dict, Union
 
 REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
-VERSION = 4
+VERSION = 5
 
 DogConfig = Dict[str, Union[str, int, bool, List[str], Dict[str, str]]]
 

@@ -167,7 +167,7 @@ def get_env_config() -> DogConfig:
 
 
 def find_mount_point(p: Path):
-    while not p.is_mount():
+    while not os.path.ismount(p):
         p = p.parent
     return p
 

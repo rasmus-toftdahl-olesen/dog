@@ -2,6 +2,7 @@
 
 import argparse
 import configparser
+import copy
 import os
 import pprint
 import subprocess
@@ -228,7 +229,7 @@ def update_config(existing_config: DogConfig, new_config: DogConfig):
         if k in existing_config and type(v) == dict:
             update_config(existing_config[k], new_config[k])
         else:
-            existing_config[k] = new_config[k]
+            existing_config[k] = copy.copy(new_config[k])
 
 
 def main() -> int:

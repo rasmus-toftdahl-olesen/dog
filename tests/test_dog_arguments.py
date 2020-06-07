@@ -72,6 +72,20 @@ def dog_env():
         return '$DOG'
 
 
+def append_to_dog_config(tmp_path: Path, extra_dog_config: str):
+    dog_config = tmp_path / 'dog.config'
+    old_config = dog_config.read_text()
+    new_config = old_config + extra_dog_config
+    dog_config.write_text(new_config)
+
+
+def system_temp_dir() -> str:
+    if sys.platform == 'win32':
+        return os.environ['TEMP']
+    else:
+        return '/tmp'
+
+
 def test_no_arguments_reports_help_on_stderr(call_dog, capfd):
     call_dog()
     captured = capfd.readouterr()
@@ -136,3 +150,27 @@ def test_stdin(call_shell, capstrip, dog_env):
     call_shell(f'echo hello world | {dog_env} cat')
     captured = capstrip.get()
     assert ('hello world', '') == captured
+
+
+def test_auto_mount_works(call_centos7, capstrip):
+    '''auto-mount is on by default, and should therefore show the files in the current directory.'''
+
+    call_centos7('ls')
+    captured = capstrip.get()
+    assert ('dog.config', '') == captured
+
+
+def test_disabled_auto_mount(call_centos7, capstrip, tmp_path):
+    '''auto-mount is on by default, and should therefore show the files in the current directory.'''
+    append_to_dog_config(tmp_path, 'auto-mount=False\n')
+    call_centos7('ls')
+    captured = capstrip.get()
+    assert ('', '') == captured
+
+
+def test_volumes(call_centos7, capstrip, tmp_path):
+    '''auto-mount is on by default, and should therefore show the files in the current directory.'''
+    append_to_dog_config(tmp_path, f'\n[volumes]\n{system_temp_dir()}=/dog_test_of_system_temp\n')
+    call_centos7('mountpoint', '/dog_test_of_system_temp')
+    captured = capstrip.get()
+    assert ('/dog_test_of_system_temp is a mountpoint', '') == captured

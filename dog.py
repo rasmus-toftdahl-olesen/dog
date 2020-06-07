@@ -39,6 +39,7 @@ def default_config() -> DogConfig:
             'home': '/home/nobody',
             'p4user': 'nobody',
             'cwd': '/home/nobody',
+            'auto-mount': True,
             'volumes': {},
             'args': ['id'],
             'image': 'alpine',
@@ -65,12 +66,19 @@ def read_dog_config(dog_config=find_dog_config()) -> DogConfig:
         image = 'esw/serverscripts/forge'
         return {'image': image, 'registry': REGISTRY}
     else:
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(delimiters='=')
         config.read(str(dog_config))
         dog_config = dict(config['dog'])
+        # Parse booleans - use default_config() to determine which values should be booleans
+        for k, v in default_config().items():
+            if type(v) == bool and k in config['dog']:
+                dog_config[k] = config['dog'].getboolean(k)
         if 'ports' in config:
             dog_config['ports'] = dict(config['ports'])
+        if 'volumes' in config:
+            dog_config['volumes'] = dict(config['volumes'])
         return dog_config
+
 
 def parse_command_line_args() -> DogConfig:
     parser = argparse.ArgumentParser(description='Docker run wrapper to make it easier to call commands.')
@@ -141,24 +149,38 @@ def get_env_config() -> DogConfig:
     config['p4user'] = os.getenv('P4USER', config['user'])
 
     if sys.platform == 'win32':
-        config['cwd'] = '/c/' + os.getcwd().replace('\\', '/')[2:]
+        cwd = os.getcwd()
+        config['win32-cwd'] = cwd
+        config['cwd'] = '/' + cwd[0] + '/' + cwd.replace('\\', '/')[2:]
     else:
         config['cwd'] = os.getcwd()
 
     if sys.platform == 'win32':
-        config['volumes'] = {'c:\\': '/c',
-                             str(Path.home() / "dog_p4tickets.txt"): config["home"] + '/.p4tickets:ro'}
+        config['volumes'] = {str(Path.home() / "dog_p4tickets.txt"): config["home"] + '/.p4tickets:ro'}
     else:
-        config['volumes'] = {'/scratch': '/scratch',
-                             '/tc/w': '/tc/w',
-                             str(Path.home() / ".p4tickets"): config["home"] + '/.p4tickets:ro'}
+        config['volumes'] = {str(Path.home() / ".p4tickets"): config["home"] + '/.p4tickets:ro'}
+
     config['volumes'][str(Path.home() / ".ssh")] = config["home"] + '/.ssh:ro'
 
     return config
 
 
+def find_mount_point(p: Path):
+    while not p.is_mount():
+        p = p.parent
+    return p
+
+
 def run(config: DogConfig):
     assert config['full-image'] is not None, 'You need to at least specify the full_image.'
+
+    if config['auto-mount']:
+        if sys.platform == 'win32':
+            drive = Path(config['win32-cwd']).drive
+            config['volumes'][drive + '\\'] = '/' + drive[0]
+        else:
+            mount_point = find_mount_point(Path(config['cwd']))
+            config['volumes'][mount_point] = mount_point
 
     args = []
     if config['sudo-outside-docker']:
@@ -201,6 +223,14 @@ def run(config: DogConfig):
         return -1
 
 
+def update_config(existing_config: DogConfig, new_config: DogConfig):
+    for k, v in new_config.items():
+        if k in existing_config and type(v) == dict:
+            update_config(existing_config[k], new_config[k])
+        else:
+            existing_config[k] = new_config[k]
+
+
 def main() -> int:
     default_conf = default_config()
     env_config = get_env_config()
@@ -211,12 +241,13 @@ def main() -> int:
     dog_config = read_dog_config()
     command_line_config = parse_command_line_args()
 
-    config = default_conf.copy()
-    config.update(env_config)
+    config = {}
+    update_config(config, default_conf)
+    update_config(config, env_config)
     if user_config:
-        config.update(user_config)
-    config.update(dog_config)
-    config.update(command_line_config)
+        update_config(config, user_config)
+    update_config(config, dog_config)
+    update_config(config, command_line_config)
 
     if config['verbose']:
         log_config('Default', default_conf)

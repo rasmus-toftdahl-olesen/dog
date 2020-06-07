@@ -11,7 +11,7 @@ from typing import Optional, List, Dict, Union
 
 REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
-VERSION = 3
+VERSION = 4
 
 DogConfig = Dict[str, Union[str, int, bool, List[str], Dict[str, str]]]
 
@@ -47,7 +47,8 @@ def default_config() -> DogConfig:
             'terminal': False,
             'as-root': False,
             'pull': False,
-            'verbose': False}
+            'verbose': False,
+            'ports': {}}
 
 
 def find_dog_config() -> Optional[Path]:
@@ -66,8 +67,10 @@ def read_dog_config(dog_config=find_dog_config()) -> DogConfig:
     else:
         config = configparser.ConfigParser()
         config.read(str(dog_config))
-        return dict(config['dog'])
-
+        dog_config = dict(config['dog'])
+        if 'ports' in config:
+            dog_config['ports'] = dict(config['ports'])
+        return dog_config
 
 def parse_command_line_args() -> DogConfig:
     parser = argparse.ArgumentParser(description='Docker run wrapper to make it easier to call commands.')
@@ -168,6 +171,9 @@ def run(config: DogConfig):
 
     for outside, inside in config['volumes'].items():
         args += ['-v', outside + ':' + inside]
+
+    for outside, inside in config['ports'].items():
+        args += ['-p', outside + ':' + inside]
 
     if config['interactive']:
         args.append('-i')

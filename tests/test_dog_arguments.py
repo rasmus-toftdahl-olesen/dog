@@ -169,7 +169,7 @@ def test_disabled_auto_mount(call_centos7, capstrip, tmp_path):
 
 
 def test_volumes(call_centos7, capstrip, tmp_path):
-    '''auto-mount is on by default, and should therefore show the files in the current directory.'''
+    '''Try adding the "system temp dir" as a volume in the dog.config.'''
     append_to_dog_config(tmp_path, f'\n[volumes]\n{system_temp_dir()}=/dog_test_of_system_temp\n')
     call_centos7('mountpoint', '/dog_test_of_system_temp')
     captured = capstrip.get()

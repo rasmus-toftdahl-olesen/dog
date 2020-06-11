@@ -14,7 +14,7 @@ REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
 VERSION = 5
 
-DogConfig = Dict[str, Union[str, int, bool, List[str], Dict[str, str]]]
+DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
 
 
 def log_verbose(config: DogConfig, txt: str):
@@ -72,7 +72,7 @@ def read_dog_config(dog_config=find_dog_config()) -> DogConfig:
         dog_config = dict(config['dog'])
         # Parse booleans - use default_config() to determine which values should be booleans
         for k, v in default_config().items():
-            if type(v) == bool and k in config['dog']:
+            if isinstance(v, bool) and k in config['dog']:
                 dog_config[k] = config['dog'].getboolean(k)
         if 'ports' in config:
             dog_config['ports'] = dict(config['ports'])
@@ -149,12 +149,12 @@ def get_env_config() -> DogConfig:
 
     config['p4user'] = os.getenv('P4USER', config['user'])
 
+    cwd = Path.cwd()
     if sys.platform == 'win32':
-        cwd = os.getcwd()
         config['win32-cwd'] = cwd
-        config['cwd'] = '/' + cwd[0] + '/' + cwd.replace('\\', '/')[2:]
+        config['cwd'] = '/' + cwd.drive[0] + '/' + str(cwd).replace('\\', '/')[2:]
     else:
-        config['cwd'] = os.getcwd()
+        config['cwd'] = cwd
 
     if sys.platform == 'win32':
         config['volumes'] = {str(Path.home() / "dog_p4tickets.txt"): config["home"] + '/.p4tickets:ro'}
@@ -177,10 +177,10 @@ def run(config: DogConfig):
 
     if config['auto-mount']:
         if sys.platform == 'win32':
-            drive = Path(config['win32-cwd']).drive
+            drive = config['win32-cwd'].drive
             config['volumes'][drive + '\\'] = '/' + drive[0]
         else:
-            mount_point = str(find_mount_point(Path(config['cwd'])))
+            mount_point = str(find_mount_point(config['cwd']))
             config['volumes'][mount_point] = mount_point
 
     args = []
@@ -190,7 +190,7 @@ def run(config: DogConfig):
     args += ['run',
              '--rm',
              '--hostname=kbnuxdockerrtol',
-             '-w', config['cwd']]
+             '-w', str(config['cwd'])]
 
     for outside, inside in config['volumes'].items():
         args += ['-v', outside + ':' + inside]
@@ -225,8 +225,10 @@ def run(config: DogConfig):
 
 
 def update_config(existing_config: DogConfig, new_config: DogConfig):
+    """Merge two DogConfigs - all exiting keys in exising_config will be replaced with the keys in new_config
+       - except for dictionaries - they will be merged with the existing dictionary."""
     for k, v in new_config.items():
-        if k in existing_config and type(v) == dict:
+        if k in existing_config and isinstance(v, dict):
             update_config(existing_config[k], new_config[k])
         else:
             existing_config[k] = copy.copy(new_config[k])

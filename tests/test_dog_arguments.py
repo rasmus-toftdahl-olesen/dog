@@ -161,7 +161,7 @@ def test_auto_mount_works(call_centos7, capstrip):
 
 
 def test_disabled_auto_mount(call_centos7, capstrip, tmp_path):
-    '''auto-mount is on by default, and should therefore show the files in the current directory.'''
+    '''disable auto-mount and make sure that we do not see the files in the current directory.'''
     append_to_dog_config(tmp_path, 'auto-mount=False\n')
     call_centos7('ls')
     captured = capstrip.get()

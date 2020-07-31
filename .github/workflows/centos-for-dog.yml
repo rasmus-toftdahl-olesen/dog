@@ -6,7 +6,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-    
+        
+      - name: Login to Docker Registry
+        uses: actions/docker/login@v1
+        
       - name: Build and push Docker images
         uses: docker/build-push-action@v1
         with:

@@ -1,6 +1,7 @@
 # dog
 
-[![Build Status](https://github.com/rasmus-toftdahl-olesen/dog/workflows/test/badge.svg)](https://github.com/rasmus-toftdahl-olesen/sequanto-automation/actions?query=workflow%3Atest)
+[![test Status](https://github.com/rasmus-toftdahl-olesen/dog/workflows/test/badge.svg)](https://github.com/rasmus-toftdahl-olesen/sequanto-automation/actions?query=workflow%3Atest)
+[![centos-for-dog Status](![centos-for-dog](https://github.com/rasmus-toftdahl-olesen/dog/workflows/centos-for-dog/badge.svg)](https://github.com/rasmus-toftdahl-olesen/sequanto-automation/actions?query=workflow%3Acentos-for-dog)
 
 dog is a simple wrapper for docker run to make it simple to call tools residing inside docker containers.
 

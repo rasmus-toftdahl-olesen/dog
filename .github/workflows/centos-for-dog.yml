@@ -12,7 +12,7 @@ jobs:
         with:
           repository: rasmus-toftdahl-olesen/dog/centos-for-dog
           registry: docker.pkg.github.com
-          tags: ${{git-tag}}
+#          tags: ${{git-tag}}
           path: tests/dockers/centos-for-dog
 #      username: ${{ secrets.DOCKER_USERNAME }}
 #      password: ${{ secrets.DOCKER_PASSWORD }}

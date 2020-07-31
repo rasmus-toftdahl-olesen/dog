@@ -1,5 +1,7 @@
 # dog
 
+[![Build Status](https://github.com/rasmus-toftdahl-olesen/dog/workflows/test/badge.svg)](https://github.com/rasmus-toftdahl-olesen/sequanto-automation/actions?query=workflow%3Atest)
+
 dog is a simple wrapper for docker run to make it simple to call tools residing inside docker containers.
 
 The basic idea is that you just put "dog" in front of the command you normally call.

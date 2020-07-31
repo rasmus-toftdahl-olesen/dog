@@ -14,5 +14,6 @@ jobs:
           registry: docker.pkg.github.com
           tag_with_ref: true
           path: tests/dockers/centos-for-dog
-#          username: ${{ secrets.DOCKER_USERNAME }}
+          #username: ${{ secrets.DOCKER_USERNAME }}
+          username: ''
           password: ${{ secrets.GITHUB_TOKEN }}

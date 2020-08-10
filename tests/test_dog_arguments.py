@@ -83,7 +83,7 @@ def system_temp_dir() -> str:
     if sys.platform == 'win32':
         return os.environ['TEMP']
     else:
-        return '/tmp'
+        return os.getenv('RUNNER_TEMP', '/tmp')
 
 
 def test_no_arguments_reports_help_on_stderr(call_dog, capfd):

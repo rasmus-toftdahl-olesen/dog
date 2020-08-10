@@ -47,7 +47,7 @@ def call_dog(my_dog, tmp_path):
 @pytest.fixture
 def call_centos7(call_dog, tmp_path):
     dog_config = tmp_path / 'dog.config'
-    dog_config.write_text('[dog]\nimage=teamtc/dog/centos-for-dog\n')
+    dog_config.write_text('[dog]\nfull-image=rtol/centos-for-dog\n')
     return call_dog
 
 

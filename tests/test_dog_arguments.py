@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Tuple
 
 import pytest
+import tempfile
 
 DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)
 
@@ -79,11 +80,16 @@ def append_to_dog_config(tmp_path: Path, extra_dog_config: str):
     dog_config.write_text(new_config)
 
 
+@pytest.fixture
 def system_temp_dir() -> str:
     if sys.platform == 'win32':
-        return os.environ['TEMP']
+        basedir = os.environ['TEMP']
     else:
-        return os.getenv('RUNNER_TEMP', '/tmp')
+        basedir = os.getenv('RUNNER_TEMP', '/tmp')
+    ret: Path = Path(tempfile.mktemp('dog_tests', 'dog_tests', basedir))
+    ret.mkdir(parents=True, exist_ok=False)
+    yield str(ret)
+    os.removedirs(str(ret))
 
 
 def test_no_arguments_reports_help_on_stderr(call_dog, capfd):
@@ -168,9 +174,9 @@ def test_disabled_auto_mount(call_centos7, capstrip, tmp_path):
     assert ('', '') == captured
 
 
-def test_volumes(call_centos7, capstrip, tmp_path):
+def test_volumes(call_centos7, capstrip, tmp_path, system_temp_dir):
     '''Try adding the "system temp dir" as a volume in the dog.config.'''
-    append_to_dog_config(tmp_path, f'\n[volumes]\n{system_temp_dir()}=/dog_test_of_system_temp\n')
+    append_to_dog_config(tmp_path, f'\n[volumes]\n{system_temp_dir}=/dog_test_of_system_temp\n')
     call_centos7('mountpoint', '/dog_test_of_system_temp')
     captured = capstrip.get()
     assert ('/dog_test_of_system_temp is a mountpoint', '') == captured

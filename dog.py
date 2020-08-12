@@ -29,6 +29,9 @@ def log_config(name: str, config: DogConfig, filename: Path = None):
         print('{} Config:'.format(name))
     pprint.pprint(config, indent=4)
 
+def fatal_error(text: str, error_code:int =-1):
+    print(f'ERROR[dog]: {text}', file=sys.stderr)
+    sys.exit(error_code)
 
 def default_config() -> DogConfig:
     return {'sudo-outside-docker': False,
@@ -258,6 +261,11 @@ def main() -> int:
         log_config('User', user_config, user_config_file)
         log_config('Dog', dog_config, find_dog_config())
         log_config('Final', config)
+
+    if 'minimum-version' in config:
+        minimum_version = int(config['minimum-version'])
+        if VERSION < minimum_version:
+            fatal_error(f'Minimum version required ({minimum_version}) is greater than your dog version ({VERSION}) - please upgrade dog')
 
     if 'full-image' not in config:
         config['full-image'] = config['registry'] + '/' + config['image']

@@ -8,6 +8,7 @@ from typing import Tuple
 
 import pytest
 import tempfile
+from dog import VERSION as ACTUAL_DOG_VERSION
 
 DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)
 
@@ -16,7 +17,9 @@ DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)
 def capstrip(capfd):
     class CapStrip:
         def get(self) -> Tuple[str, str]:
-            return tuple(a.strip() for a in capfd.readouterr())
+            out, err = capfd.readouterr()
+            out, err = out.strip(), err.strip()
+            return out, err
 
     return CapStrip()
 
@@ -180,3 +183,24 @@ def test_volumes(call_centos7, capstrip, tmp_path, system_temp_dir):
     call_centos7('mountpoint', '/dog_test_of_system_temp')
     captured = capstrip.get()
     assert ('/dog_test_of_system_temp is a mountpoint', '') == captured
+
+
+def test_dog_is_too_old_for_minimum_version(call_centos7, tmp_path, capstrip):
+    append_to_dog_config(tmp_path, f'minimum-version=999999\n')
+    call_centos7('ls')
+    captured = capstrip.get()
+    assert 'Minimum version required (999999) is greater than your dog' in captured[1]
+
+
+def test_dog_is_minimum_version(call_centos7, tmp_path, capstrip):
+    append_to_dog_config(tmp_path, f'minimum-version={ACTUAL_DOG_VERSION}\n')
+    call_centos7('echo ok')
+    captured = capstrip.get()
+    assert ('ok', '') == captured
+
+
+def test_dog_is_newer_than_minimum_version(call_centos7, tmp_path, capstrip):
+    append_to_dog_config(tmp_path, f'minimum-version={ACTUAL_DOG_VERSION - 1}\n')
+    call_centos7('echo ok')
+    captured = capstrip.get()
+    assert captured == ('ok', '')

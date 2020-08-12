@@ -53,7 +53,7 @@ def call_dog(my_dog, tmp_path):
 @pytest.fixture
 def call_centos7(call_dog, tmp_path):
     dog_config = tmp_path / 'dog.config'
-    dog_config.write_text('[dog]\nfull-image=rtol/centos-for-dog\n')
+    dog_config.write_text('[dog]\nimage=rtol/centos-for-dog\n')
     return call_dog
 
 
@@ -226,3 +226,17 @@ def test_dog_config_not_found(my_dog, system_temp_dir, capfd):
     cmd_line = [DOG_PYTHON_UNDER_TEST, str(my_dog), 'echo', 'ok']
     subprocess.run(cmd_line, cwd=system_temp_dir)
     assert 'ERROR' in capfd.readouterr().err
+
+
+@pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works in inside Demant (sorry!)')
+def test_registry(call_dog, tmp_path, capstrip):
+    (tmp_path / 'dog.config').write_text('[dog]\nregistry=gitlab.kitenet.com:4567\nimage=esw/serverscripts/forge\n')
+    call_dog('echo', 'ok')
+    assert capstrip.get() == ('ok', '')
+
+
+def test_bad_registry(call_centos7, tmp_path, capfd):
+    # (tmp_path / 'dog.config').write_text('[dog]\nregistry=gitlab.kitenet.com:4567\nimage=esw/serverscripts/forge\n')
+    append_to_dog_config(tmp_path, '\nregistry=this-is-a-bad-registry')
+    call_centos7('echo', 'ok')
+    assert 'Unable to find image' in capfd.readouterr().err

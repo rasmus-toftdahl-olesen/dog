@@ -10,9 +10,8 @@ import sys
 from pathlib import Path
 from typing import List, Dict, Union
 
-REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
-VERSION = 6
+VERSION = 7
 
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
 
@@ -48,7 +47,6 @@ def default_config() -> DogConfig:
             'auto-mount': True,
             'volumes': {},
             'args': ['id'],
-            'registry': REGISTRY,
             'interactive': True,
             'terminal': False,
             'as-root': False,
@@ -270,7 +268,10 @@ def main() -> int:
     if 'full-image' not in config:
         if 'image' not in config:
             fatal_error('No image specified in dog.config')
-        config['full-image'] = config['registry'] + '/' + config['image']
+        if 'registry' in config:
+            config['full-image'] = config['registry'] + '/' + config['image']
+        else:
+            config['full-image'] = config['image']
 
     if config['pull']:
         try:

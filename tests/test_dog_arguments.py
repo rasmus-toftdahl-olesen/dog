@@ -141,9 +141,9 @@ def test_version(call_dog, capfd):
     assert re.match('dog version [0-9]+', captured.out)
 
 
-def test_verbose(call_dog, capfd):
+def test_verbose(call_centos7, capfd):
     '''--verbose should report the actual setup'''
-    call_dog('--verbose', 'id')
+    call_centos7('--verbose', 'id')
     captured = capfd.readouterr()
     assert f'Dog Config' in captured.out
     assert "'verbose': True" in captured.out
@@ -213,3 +213,16 @@ def test_no_image_given(call_dog, tmp_path, capfd):
     dog_config.write_text('[dog]\n\n')
     call_dog('echo ok')
     assert 'No image specified' in capfd.readouterr().err
+
+
+def test_dog_config_not_found(my_dog, system_temp_dir, capfd):
+    """If no dog.config is found, report an error.
+
+    We run this test in the system_temp_dir to be more sure that no-one has a dog.config file somewhere in the parent directories."""
+
+    for parent in Path(system_temp_dir).parents:
+        assert not (parent / 'dog.config').exists(), f'Pre-conditions for this test failed - we expect no dog.config files in the parent directories of {system_temp_dir}'
+
+    cmd_line = [DOG_PYTHON_UNDER_TEST, str(my_dog), 'echo', 'ok']
+    subprocess.run(cmd_line, cwd=system_temp_dir)
+    assert 'ERROR' in capfd.readouterr().err

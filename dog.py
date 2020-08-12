@@ -8,7 +8,7 @@ import pprint
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, List, Dict, Union
+from typing import List, Dict, Union
 
 REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
@@ -57,32 +57,29 @@ def default_config() -> DogConfig:
             'ports': {}}
 
 
-def find_dog_config() -> Optional[Path]:
+def find_dog_config() -> Path:
     cur = Path.cwd() / CONFIG_FILE
     for parent in cur.parents:
         dog_config = parent / CONFIG_FILE
         if dog_config.is_file():
             return dog_config
-    return None
+
+    fatal_error('Could not find dog.config in current directory or on of its parents')
 
 
-def read_dog_config(dog_config=find_dog_config()) -> DogConfig:
-    if dog_config is None:
-        image = 'esw/serverscripts/forge'
-        return {'image': image, 'registry': REGISTRY}
-    else:
-        config = configparser.ConfigParser(delimiters='=')
-        config.read(str(dog_config))
-        dog_config = dict(config['dog'])
-        # Parse booleans - use default_config() to determine which values should be booleans
-        for k, v in default_config().items():
-            if isinstance(v, bool) and k in config['dog']:
-                dog_config[k] = config['dog'].getboolean(k)
-        if 'ports' in config:
-            dog_config['ports'] = dict(config['ports'])
-        if 'volumes' in config:
-            dog_config['volumes'] = dict(config['volumes'])
-        return dog_config
+def read_dog_config(dog_config: Path) -> DogConfig:
+    config = configparser.ConfigParser(delimiters='=')
+    config.read(str(dog_config))
+    dog_config = dict(config['dog'])
+    # Parse booleans - use default_config() to determine which values should be booleans
+    for k, v in default_config().items():
+        if isinstance(v, bool) and k in config['dog']:
+            dog_config[k] = config['dog'].getboolean(k)
+    if 'ports' in config:
+        dog_config['ports'] = dict(config['ports'])
+    if 'volumes' in config:
+        dog_config['volumes'] = dict(config['volumes'])
+    return dog_config
 
 
 def parse_command_line_args() -> DogConfig:
@@ -239,14 +236,16 @@ def update_config(existing_config: DogConfig, new_config: DogConfig):
 
 
 def main() -> int:
+    command_line_config = parse_command_line_args()
+
     default_conf = default_config()
     env_config = get_env_config()
     user_config_file = Path.home() / '.dog.config'
     user_config = None
     if user_config_file.is_file():
         user_config = read_dog_config(user_config_file)
-    dog_config = read_dog_config()
-    command_line_config = parse_command_line_args()
+    dog_config_file = find_dog_config()
+    dog_config = read_dog_config(dog_config_file)
 
     config = {}
     update_config(config, default_conf)
@@ -260,7 +259,7 @@ def main() -> int:
         log_config('Default', default_conf)
         log_config('Environment', env_config)
         log_config('User', user_config, user_config_file)
-        log_config('Dog', dog_config, find_dog_config())
+        log_config('Dog', dog_config, dog_config_file)
         log_config('Final', config)
 
     if 'minimum-version' in config:

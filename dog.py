@@ -12,7 +12,7 @@ from typing import Optional, List, Dict, Union
 
 REGISTRY = 'gitlab.kitenet.com:4567'
 CONFIG_FILE = 'dog.config'
-VERSION = 5
+VERSION = 6
 
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
 
@@ -29,9 +29,11 @@ def log_config(name: str, config: DogConfig, filename: Path = None):
         print('{} Config:'.format(name))
     pprint.pprint(config, indent=4)
 
-def fatal_error(text: str, error_code:int =-1):
+
+def fatal_error(text: str, error_code: int = -1):
     print(f'ERROR[dog]: {text}', file=sys.stderr)
     sys.exit(error_code)
+
 
 def default_config() -> DogConfig:
     return {'sudo-outside-docker': False,
@@ -46,7 +48,6 @@ def default_config() -> DogConfig:
             'auto-mount': True,
             'volumes': {},
             'args': ['id'],
-            'image': 'alpine',
             'registry': REGISTRY,
             'interactive': True,
             'terminal': False,
@@ -268,6 +269,8 @@ def main() -> int:
             fatal_error(f'Minimum version required ({minimum_version}) is greater than your dog version ({VERSION}) - please upgrade dog')
 
     if 'full-image' not in config:
+        if 'image' not in config:
+            fatal_error('No image specified in dog.config')
         config['full-image'] = config['registry'] + '/' + config['image']
 
     if config['pull']:

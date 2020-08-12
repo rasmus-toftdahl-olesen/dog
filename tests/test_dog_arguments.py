@@ -206,3 +206,10 @@ def test_dog_is_newer_than_minimum_version(call_centos7, tmp_path, capstrip):
     call_centos7('echo ok')
     captured = capstrip.get()
     assert captured == ('ok', '')
+
+
+def test_no_image_given(call_dog, tmp_path, capfd):
+    dog_config = tmp_path / 'dog.config'
+    dog_config.write_text('[dog]\n\n')
+    call_dog('echo ok')
+    assert 'No image specified' in capfd.readouterr().err

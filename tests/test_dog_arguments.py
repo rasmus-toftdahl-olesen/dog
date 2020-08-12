@@ -3,11 +3,11 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Tuple
 
 import pytest
-import tempfile
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from dog import VERSION as ACTUAL_DOG_VERSION
@@ -131,7 +131,7 @@ def test_pull_as_echo_argument(call_centos7, capstrip):
     '''--pull should only be interpreted as an dog argument if it comes before the first argument'''
     call_centos7('echo', '-n', '--pull')
     captured = capstrip.get()
-    assert ('--pull', '') == captured
+    assert captured == ('--pull', '')
 
 
 def test_version(call_dog, capfd):
@@ -153,14 +153,14 @@ def test_stdin_testing_works(call_shell, capstrip):
     '''Just verifying that my stdin testing works before testing it with dog.'''
     call_shell('echo hello world | cat -')
     captured = capstrip.get()
-    assert ('hello world', '') == captured
+    assert captured == ('hello world', '')
 
 
 def test_stdin(call_shell, capstrip, dog_env):
     '''stdin should be available from inside dog.'''
     call_shell(f'echo hello world | {dog_env} cat')
     captured = capstrip.get()
-    assert ('hello world', '') == captured
+    assert captured == ('hello world', '')
 
 
 def test_auto_mount_works(call_centos7, capstrip):
@@ -168,7 +168,7 @@ def test_auto_mount_works(call_centos7, capstrip):
 
     call_centos7('ls')
     captured = capstrip.get()
-    assert ('dog.config', '') == captured
+    assert captured == ('dog.config', '')
 
 
 def test_disabled_auto_mount(call_centos7, capstrip, tmp_path):
@@ -176,7 +176,7 @@ def test_disabled_auto_mount(call_centos7, capstrip, tmp_path):
     append_to_dog_config(tmp_path, 'auto-mount=False\n')
     call_centos7('ls')
     captured = capstrip.get()
-    assert ('', '') == captured
+    assert captured == ('', '')
 
 
 def test_volumes(call_centos7, capstrip, tmp_path, system_temp_dir):
@@ -184,7 +184,7 @@ def test_volumes(call_centos7, capstrip, tmp_path, system_temp_dir):
     append_to_dog_config(tmp_path, f'\n[volumes]\n{system_temp_dir}=/dog_test_of_system_temp\n')
     call_centos7('mountpoint', '/dog_test_of_system_temp')
     captured = capstrip.get()
-    assert ('/dog_test_of_system_temp is a mountpoint', '') == captured
+    assert captured == ('/dog_test_of_system_temp is a mountpoint', '')
 
 
 def test_dog_is_too_old_for_minimum_version(call_centos7, tmp_path, capstrip):
@@ -198,7 +198,7 @@ def test_dog_is_minimum_version(call_centos7, tmp_path, capstrip):
     append_to_dog_config(tmp_path, f'minimum-version={ACTUAL_DOG_VERSION}\n')
     call_centos7('echo ok')
     captured = capstrip.get()
-    assert ('ok', '') == captured
+    assert captured == ('ok', '')
 
 
 def test_dog_is_newer_than_minimum_version(call_centos7, tmp_path, capstrip):

@@ -30,7 +30,7 @@ def log_config(name: str, config: DogConfig, filename: Path = None):
 
 
 def fatal_error(text: str, error_code: int = -1):
-    print(f'ERROR[dog]: {text}', file=sys.stderr)
+    print('ERROR[dog]: {}'.format(text), file=sys.stderr)
     sys.exit(error_code)
 
 
@@ -263,7 +263,7 @@ def main() -> int:
     if 'minimum-version' in config:
         minimum_version = int(config['minimum-version'])
         if VERSION < minimum_version:
-            fatal_error(f'Minimum version required ({minimum_version}) is greater than your dog version ({VERSION}) - please upgrade dog')
+            fatal_error('Minimum version required ({}) is greater than your dog version ({}) - please upgrade dog'.format(minimum_version, VERSION))
 
     if 'full-image' not in config:
         if 'image' not in config:

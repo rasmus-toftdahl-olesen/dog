@@ -8,6 +8,8 @@ from typing import Tuple
 
 import pytest
 import tempfile
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from dog import VERSION as ACTUAL_DOG_VERSION
 
 DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)

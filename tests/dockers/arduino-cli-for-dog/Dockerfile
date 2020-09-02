@@ -1,6 +1,6 @@
 FROM zoobab/arduino-cli
 LABEL maintainer=rasmus.toftdahl.olesen@gmail.com
-RUN apt install -y sudo
+RUN apk add sudo
 
 ADD entrypoint.sh /
 RUN chmod a+x /entrypoint.sh

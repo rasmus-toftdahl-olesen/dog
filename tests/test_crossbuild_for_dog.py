@@ -18,6 +18,10 @@ def call_shell(my_dog, monkeypatch):
 
     return call
 
+def test_pull_crossbuild_for_dog(call_shell, capstrip, dog_env):
+    call_shell(f'{dog_env} env')
+    print(capstrip.get())
+    
 def test_make_creates_arm_targets(call_shell, capstrip, dog_env):
     call_shell(f'{dog_env} make')
     stdout, stderr = capstrip.get()

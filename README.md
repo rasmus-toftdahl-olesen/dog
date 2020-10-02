@@ -16,7 +16,52 @@ The docker container to use is defined in a file called dog.config which is
 normally positioned in the root of your workspace and contains the name of the 
 docker image.
 
-By default the docker image is fetched by the standard Oticon docker registry (GitLab),
+## Key selling points
+
+Also known as the three reasons for using dog.
+
+### 1. Versioning your tools
+
+By putting the docker your project uses to compile in a dog.config file inside the projects repo, the version of the tools to use is now versioned along with the project itself.
+
+This also makes it easier when the tools needs to be upgraded, you can work on a feature branch to get the tools and project build scripts working and then merge both tools and build scripts to master when they are ready.
+
+It also allows you to experiment with your tools without breaking anything.
+
+
+### 2. Making developers happy
+
+Installing tools is never fun, or at least, as a developer you would like your build to "just work" on the developers machine without a lot of work.
+
+By putting the build tools inside a docker image you can suddenly compile your project anywhere, so the developer can decide to use the Linux distro (or even Windows or Mac) that they like, and use the editor of their choice - compilation will be the same on all systems since the build tools are contained and verisoned inside the docker image.
+
+
+### 3. Avoiding the permission issues that arises from using docker for containing tools
+
+Dog is simply a wrapper around "docker run" but with some sane default like mounting the current project inside the docker since that is where you would normally want the build tools to look.
+
+But docker run will run as "root" by default inside the docker, or any other "default user" that has been set up for that particular docker image.
+
+This is problematic since the output of your build will then suddenly be owned by whichever user is running inside the docker, making life difficult for the developer.
+
+To solve this, dog will set a few environment variables that the docker image entrypoint can then use to "sudo" to the correct user and execute the build as the same user that just called dog.
+
+In essence it just makes it simpler to use docker image containing your build tools.
+
+```
+D9.12 kbnuxaes01 [/scratch]
+$ id
+uid=4548(rtol) gid=1000(oticon) groups=1000(oticon),44(video),1007(docker)
+D9.12 kbnuxaes01 [/scratch]
+$ dog touch demo.txt
+D9.12 kbnuxaes01 [/scratch]
+$ ls -l demo.txt
+-rw-r--r-- 1 rtol oticon 0 Oct  2 21:55 demo.txt
+```
+
+# Example
+
+By default the docker image is fetched from the default docker registry (hub.docker.com),
 for instance:
 
 ```
@@ -32,4 +77,4 @@ dog gcc main.c -o main
 
 ```
 
-Will copmile main.c using gcc 7.5.
+Will compile main.c using gcc 7.5.

@@ -78,3 +78,9 @@ dog gcc main.c -o main
 ```
 
 Will compile main.c using gcc 7.5.
+
+## crossbuild-for-dog
+
+You can see a more real-world example by looking at the [crossbuild-for-dog test image](https://hub.docker.com/repository/docker/rtol/crossbuild-for-dog) that extends the standard crossbuild docker image with a dog enabled entrypoint - which can then be used to compile ARM linux executables anywhere.
+
+The source for crossbuild-for-dog is available in [tests/dockers/crossbuild-for-dog](tests/dockers/crossbuild-for-dog) and there is a pytest verifying it in [tests/test_crossbuild_for_dog.py](tests/test_crossbuild_for_dog.py).

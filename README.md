@@ -24,9 +24,11 @@ Also known as the three reasons for using dog.
 
 By putting the docker your project uses to compile in a dog.config file inside the projects repo, the version of the tools to use is now versioned along with the project itself.
 
-This also makes it easier when the tools needs to be upgraded, you can work on a feature branch to get the tools and project build scripts working and then merge both tools and build scripts to master when they are ready.
+This means that you are able to reproduce (and bug-fix) on a 10 year old project, because the dog.config on your release tag/branch will point to the build tools as they looked 10 years ago, and by the "magic" of docker they will still work the same way they did 10 years ago.
 
-It also allows you to experiment with your tools without breaking anything.
+It also makes it easier when the tools needs to be upgraded, you can work on a feature branch to get the tools and project build scripts working and then merge both tools and build scripts to master when they are ready.
+
+Experimenting with your tools without breaking anything also becomes much easier when you do not have to modify a machine, but can just modify a Dockerfile.
 
 
 ### 2. Making developers happy

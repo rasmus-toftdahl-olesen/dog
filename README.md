@@ -35,7 +35,7 @@ Experimenting with your tools without breaking anything also becomes much easier
 
 Installing tools is never fun, or at least, as a developer you would like your build to "just work" on the developers machine without a lot of work.
 
-By putting the build tools inside a docker image you can suddenly compile your project anywhere, so the developer can decide to use the Linux distro (or even Windows or Mac) that they like, and use the editor of their choice - compilation will be the same on all systems since the build tools are contained and verisoned inside the docker image.
+By putting the build tools inside a docker image you can suddenly compile your project anywhere, so the developer can decide to use the Linux distro (or even Windows or Mac) that they like, and use the editor of their choice - compilation will be the same on all systems since the build tools are contained and versioned inside the docker image.
 
 
 ### 3. Avoiding the permission issues that arises from using docker for containing tools

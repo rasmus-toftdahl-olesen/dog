@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         # We want to support python 3.5 and forward (since python 3.5 is the default python on current debian stable)
-        python-version: [3.5, 3.6, 3.7, 3.8]
+        python-version: [3.5, 3.6, 3.7, 3.8, 3.9]
 
     steps:
       - uses: actions/checkout@v2
@@ -38,6 +38,8 @@ jobs:
           python-version: 3.6
       - name: Display Python version (pytest)
         run: python -c "import sys; print(sys.version)"
+      - name: Display Python version (under test)
+        run: $DOG_PYTHON_UNDER_TEST -c "import sys; print(sys.version)"
       - name: env (pytest)
         run: env
       - name: Install dependencies

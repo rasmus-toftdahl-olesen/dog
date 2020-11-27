@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        # We want to support python 3.5 and forward (since python 3.5 is the default python on current debian stable)
         python-version: [3.5, 3.6, 3.7, 3.8]
 
     steps:
@@ -22,7 +23,7 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
-          #python-version: ${{ matrix.python-version }}
+          # The tests are expected to be python 3.6 or later
           python-version: 3.6
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
@@ -45,4 +46,4 @@ jobs:
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Test with pytest
         run: |
-          pytest
+          DOG_PYTHON_UNDER_TEST=python-${{ matrix.python-version }} pytest

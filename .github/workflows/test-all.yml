@@ -31,7 +31,7 @@ jobs:
         run: echo "DOG_PYTHON_UNDER_TEST=$pythonLocation/bin/python" >> $GITHUB_ENV
       - name: env (python under test)
         run: env
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.6 for use as pytest driver
         uses: actions/setup-python@v2
         with:
           # The tests are expected to be python 3.6 or later

@@ -27,8 +27,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
-      - name: env (python under test)
-        run: export DOG_PYTHON_UNDER_TEST=$pythonLocation/bin/python
+      - name: Set DOG_PYTH_UNDER_TEST
+        run: echo "DOG_PYTHON_UNDER_TEST=$pythonLocation/bin/python" >> $GITHUB_ENV
       - name: env (python under test)
         run: env
       - name: Set up Python ${{ matrix.python-version }}

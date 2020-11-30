@@ -4,18 +4,19 @@ import sys
 from setuptools import setup
 from pathlib import Path
 root_dir = Path(__file__).parent
-long_description = (root_dir / 'README.md').read_text()
+readme = (root_dir / 'README.md').read_text()
 import dog
 
-setup(name='dog',
+setup(name='dog-rasmus.toftdahl.olesen',
       version=dog.VERSION,
-      description='dog is a simple wrapper for docker run to make it simple to call tools residing inside docker containers.',
+      description='dog is a simple wrapper for docker run to make it simple to call tools residing inside docker containers',
       license='The Unlicense',
-      long_description=long_description,
       long_description_content_type='text/markdown',
+      long_description=readme,
       author='Rasmus Toftdahl Olesen',
       author_email='rasmus.toftdahl.olesen@gmail.com',
       url='https://github.com/rasmus-toftdahl-olesen/dog',
+      py_modules=['dog'],
       scripts=['dog.py'],
       platforms='any',
       python_requires='>=3.6',

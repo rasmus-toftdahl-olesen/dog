@@ -7,7 +7,7 @@ root_dir = Path(__file__).parent
 readme = (root_dir / 'README.md').read_text()
 import dog
 
-setup(name='dog-rasmus.toftdahl.olesen',
+setup(name='dog',
       version=dog.VERSION,
       description='dog is a simple wrapper for docker run to make it simple to call tools residing inside docker containers',
       license='The Unlicense',

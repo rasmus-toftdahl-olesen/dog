@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import os
 
 import pytest
 
@@ -27,6 +28,7 @@ def test_pull_git_for_dog(call_shell, capstrip, dog_env):
     print(capstrip.get())
 
 
+@pytest.mark.skipif('GITHUB_ACTIONS' in os.environ, reason='This test does not work on GitHub actions since it uses SSH authentication')
 def test_ssh_enabled(call_shell, capstrip, dog_env):
     call_shell(f'{dog_env} git clone git@github.com:rasmus-toftdahl-olesen/dog.git')
     stdout, stderr = capstrip.get()

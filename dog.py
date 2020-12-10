@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import List, Dict, Union
 
 CONFIG_FILE = 'dog.config'
-VERSION = 7
+VERSION = 8
 
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
 

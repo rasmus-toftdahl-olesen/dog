@@ -13,5 +13,5 @@ if [[ $DOG_AS_ROOT = "True" ]]; then
     exec "$@"
 else
     args="$@"
-    exec /usr/bin/sudo -u $DOG_USER --preserve-env=PATH,P4PORT,P4USER -- /bin/bash -c "LANG=en_US.UTF-8 $args"
+    exec /usr/bin/sudo -u $DOG_USER --preserve-env -- /bin/bash -c "LANG=en_US.UTF-8 $args"
 fi

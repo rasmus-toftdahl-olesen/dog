@@ -53,7 +53,8 @@ def default_config() -> DogConfig:
             'pull': False,
             'verbose': False,
             'ports': {},
-            'preserve-env': 'P4USER,P4PORT'}
+            'preserve-env': 'P4USER,P4PORT',
+            'ssh': True}
 
 
 def find_dog_config() -> Path:
@@ -161,8 +162,6 @@ def get_env_config() -> DogConfig:
     else:
         config['volumes'] = {str(Path.home() / ".p4tickets"): config["home"] + '/.p4tickets:ro'}
 
-    config['volumes'][str(Path.home() / ".ssh")] = config["home"] + '/.ssh:ro'
-
     return config
 
 
@@ -182,6 +181,9 @@ def run(config: DogConfig):
         else:
             mount_point = str(find_mount_point(config['cwd']))
             config['volumes'][mount_point] = mount_point
+
+    if config['ssh']:
+        config['volumes'][str(Path.home() / ".ssh")] = config["home"] + '/.ssh:ro'
 
     args = []
     if config['sudo-outside-docker']:

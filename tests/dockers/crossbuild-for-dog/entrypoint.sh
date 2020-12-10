@@ -13,5 +13,5 @@ if [[ $DOG_AS_ROOT = "True" ]]; then
     exec "$@"
 else
     args="$@"
-    exec /usr/bin/sudo -u $DOG_USER --preserve-env=$DOG_PRESERVE_ENV -- /bin/bash -c "CROSS_TRIPLE=$CROSS_TRIPLE /usr/bin/crossbuild $args"
+    exec /usr/bin/sudo -u $DOG_USER --preserve-env -- /bin/bash -c "CROSS_TRIPLE=$CROSS_TRIPLE /usr/bin/crossbuild $args"
 fi

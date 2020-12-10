@@ -4,10 +4,11 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Tuple
 
 import pytest
+
 from conftest import append_to_dog_config, DOG_PYTHON_UNDER_TEST, ACTUAL_DOG_VERSION
+
 
 @pytest.fixture
 def call_centos7(call_dog, tmp_path):
@@ -27,7 +28,6 @@ def call_shell(call_centos7, tmp_path, my_dog, monkeypatch):
         return subprocess.run(shell_string, shell=True, cwd=tmp_path)
 
     return call
-
 
 
 def test_no_arguments_reports_help_on_stderr(call_dog, capfd):
@@ -173,3 +173,31 @@ def test_bad_registry(call_centos7, tmp_path, capfd):
     append_to_dog_config(tmp_path, '\nregistry=this-is-a-bad-registry')
     call_centos7('echo', 'ok')
     assert 'Unable to find image' in capfd.readouterr().err
+
+
+def test_preserve_env(call_centos7, tmp_path, capfd, monkeypatch):
+    # First call without the local variable
+    monkeypatch.delenv('MY_ENV_VAR', raising=False)
+    call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
+    captured = capfd.readouterr()
+    assert f'MY_ENV_VAR is' in captured.out
+
+    # Then set the local variable - but still do not preserve it
+    monkeypatch.setenv('MY_ENV_VAR', 'this is preserved')
+    call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
+    captured = capfd.readouterr()
+    assert f'MY_ENV_VAR is' in captured.out
+
+    # Then preserve the local variable - expect it to be preserved now
+    append_to_dog_config(tmp_path, '\npreserve-env=MY_ENV_VAR')
+    call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
+    captured = capfd.readouterr()
+    assert f'MY_ENV_VAR is this is preserved' in captured.out
+
+
+def test_preserve_non_existing_env(call_centos7, tmp_path, capfd, monkeypatch):
+    monkeypatch.delenv('NON_EXISTING_VAR', raising=False)
+    append_to_dog_config(tmp_path, '\npreserve-env=NON_EXISTING_VAR')
+    assert call_centos7('echo', 'NON_EXISTING_VAR is $NON_EXISTING_VAR') == 0
+    captured = capfd.readouterr()
+    assert f'NON_EXISTING_VAR is' in captured.out

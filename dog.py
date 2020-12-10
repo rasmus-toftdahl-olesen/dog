@@ -36,7 +36,7 @@ def fatal_error(text: str, error_code: int = -1):
 
 def default_config() -> DogConfig:
     return {'sudo-outside-docker': False,
-            'exposed-dog-variables': ['uid', 'gid', 'user', 'group', 'home', 'as-root'],
+            'exposed-dog-variables': ['uid', 'gid', 'user', 'group', 'home', 'as-root', 'preserve-env'],
             'uid': 1000,
             'gid': 1000,
             'user': 'nobody',
@@ -52,7 +52,8 @@ def default_config() -> DogConfig:
             'as-root': False,
             'pull': False,
             'verbose': False,
-            'ports': {}}
+            'ports': {},
+            'preserve-env': 'P4USER,P4PORT'}
 
 
 def find_dog_config() -> Path:
@@ -206,6 +207,10 @@ def run(config: DogConfig):
     if not config['as-root']:
         args.extend(['-e', 'USER=' + config["user"],
                      '-e', 'P4USER=' + config["p4user"]])
+
+    for env_var_name in config['preserve-env'].split(','):
+        if env_var_name in os.environ:
+            args.extend(['-e', '{}={}'.format(env_var_name, os.environ[env_var_name])])
 
     for name in config['exposed-dog-variables']:
         env_name = name.upper().replace('-', '_')

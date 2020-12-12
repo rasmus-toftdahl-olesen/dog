@@ -17,6 +17,25 @@ The docker container to use is defined in a file called dog.config which is
 normally positioned in the root of your workspace and contains the name of the
 docker image.
 
+## Installation
+
+Dog is a single file script that only require Python 3.5+ and does not use any 
+modules outside the ones that ship with Python.
+
+So basically you can just clone the repo and stick a symlink to dog.py in your PATH.
+
+Dog is also available on pypi so you should also be able to simply do:
+
+```
+pip install dog
+
+# Or
+
+python -m pip install dog
+``` 
+To get going.
+
+
 ## Key selling points
 
 Also known as the three reasons for using dog.

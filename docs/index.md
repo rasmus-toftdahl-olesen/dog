@@ -1,2 +1,5 @@
-This is the index page.
 
+# Table Of Contents
+
+* [Usage](Usage)
+* [Configuration](Configuration)

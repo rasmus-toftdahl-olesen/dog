@@ -17,6 +17,13 @@ The docker container to use is defined in a file called dog.config which is
 normally positioned in the root of your workspace and contains the name of the
 docker image.
 
+
+## Documentation
+
+* [Usage](docs/Usage)
+* [Configuration](docs/Configuration)
+* [Creating dog-enabled docker images](docs/DogEnabledDockers)
+
 ## Installation
 
 Dog is a single file script that only require Python 3.5+ and does not use any 

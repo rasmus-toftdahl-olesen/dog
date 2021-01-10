@@ -9,7 +9,7 @@ Let us take a look at the example [centos-for-dog image](https://hub.docker.com/
 The Dockerfile looks relative straight-forward, all it does is install the sudo package and set up an ENTRYPOINT
 [(the file below can be browsed here)](https://github.com/rasmus-toftdahl-olesen/dog/blob/master/tests/dockers/centos-for-dog/Dockerfile)
 
-```
+```dockerfile
 FROM centos:7.5.1804
 LABEL maintainer=KBN_Project_Team_Continuous@dgs.com
 RUN yum install -y sudo
@@ -22,7 +22,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 The entrypoint.sh is just a simple shell-script which will "sudo" to the correct user when the docker image is called using dog:
 [(get the source here)](https://github.com/rasmus-toftdahl-olesen/dog/blob/master/tests/dockers/centos-for-dog/entrypoint.sh)
 
-```
+```bash
 #!/bin/bash
 
 if [[ ! -d $DOG_HOME ]]; then

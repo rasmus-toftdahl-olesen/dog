@@ -6,8 +6,8 @@ What an dog-enabled ENTRYPOINT usually does is simple to add a user with the sam
 
 Let us take a look at the example [centos-for-dog image](https://hub.docker.com/r/rtol/centos-for-dog) that is a dog-enabled version of the standard CentOS docker image.
 
-The Dockerfile looks relative straight-forward, all it does is install the sudo package and set up an ENTRYPOINT:
-https://github.com/rasmus-toftdahl-olesen/dog/blob/master/tests/dockers/centos-for-dog/Dockerfile
+The Dockerfile looks relative straight-forward, all it does is install the sudo package and set up an ENTRYPOINT
+[(the file below can be browsed here)](https://github.com/rasmus-toftdahl-olesen/dog/blob/master/tests/dockers/centos-for-dog/Dockerfile)
 
 ```
 FROM centos:7.5.1804
@@ -20,7 +20,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 ```
 
 The entrypoint.sh is just a simple shell-script which will "sudo" to the correct user when the docker image is called using dog:
-https://github.com/rasmus-toftdahl-olesen/dog/blob/master/tests/dockers/centos-for-dog/entrypoint.sh
+[(get the source here)](https://github.com/rasmus-toftdahl-olesen/dog/blob/master/tests/dockers/centos-for-dog/entrypoint.sh)
 
 ```
 #!/bin/bash
@@ -42,4 +42,7 @@ else
 fi
 ```
 
+As you can see it is pretty simple - if the $DOG_* environment variables are present, the entrypoint reacts to them and creates a new user and group with uid and gid matching the user who called dog.
+
+It then uses sudo to change to the newly created user and executes the command that the user put after dog on the command line.
 

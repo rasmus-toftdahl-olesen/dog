@@ -6,6 +6,7 @@ import subprocess
 
 RESOURCES = Path(__file__).parent / 'resources' / 'crossbuild-for-dog'
 
+
 @pytest.fixture
 def call_shell(my_dog, monkeypatch):
     if 'win32' in sys.platform:
@@ -18,9 +19,11 @@ def call_shell(my_dog, monkeypatch):
 
     return call
 
+
 def test_pull_crossbuild_for_dog(call_shell, capstrip, dog_env):
     call_shell(f'{dog_env} --pull env')
     print(capstrip.get())
+
 
 def test_make_creates_arm_targets(call_shell, capstrip, dog_env):
     call_shell(f'{dog_env} make')

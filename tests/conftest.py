@@ -7,7 +7,6 @@ import subprocess
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from dog import VERSION as ACTUAL_DOG_VERSION
 
 DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)
 
@@ -72,4 +71,3 @@ def system_temp_dir() -> str:
     ret.mkdir(parents=True, exist_ok=False)
     yield str(ret)
     os.removedirs(str(ret))
-

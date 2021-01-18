@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
-import sys
-from setuptools import setup
 from pathlib import Path
+
+from setuptools import setup
+
 root_dir = Path(__file__).parent
 readme = (root_dir / 'README.md').read_text()
 import dog
@@ -17,7 +18,7 @@ setup(name='dog',
       author_email='rasmus.toftdahl.olesen@gmail.com',
       url='https://github.com/rasmus-toftdahl-olesen/dog',
       py_modules=['dog'],
-      entry_points = {
+      entry_points={
           'console_scripts': ['dog=dog:main'],
       },
       scripts=['dog.py'],
@@ -29,5 +30,5 @@ setup(name='dog',
                    'Topic :: Software Development :: Build Tools',
                    'Topic :: Software Development :: Embedded Systems',
                    'Programming Language :: Python :: 3',
-      ],
-)
+                   ],
+      )

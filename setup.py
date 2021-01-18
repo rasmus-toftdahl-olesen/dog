@@ -4,9 +4,10 @@ from pathlib import Path
 
 from setuptools import setup
 
+import dog
+
 root_dir = Path(__file__).parent
 readme = (root_dir / 'README.md').read_text()
-import dog
 
 setup(name='dog',
       version=dog.VERSION,

@@ -1,8 +1,10 @@
+import subprocess
 import sys
 from pathlib import Path
+
 import pytest
+
 from conftest import DOG_PYTHON_UNDER_TEST
-import subprocess
 
 RESOURCES = Path(__file__).parent / 'resources' / 'crossbuild-for-dog'
 
@@ -31,4 +33,3 @@ def test_make_creates_arm_targets(call_shell, capstrip, dog_env):
     assert stderr == ''
     assert 'CROSS_TRIPLE: aarch64-linux-gnu' in stdout
     assert 'ARM aarch64' in stdout
-

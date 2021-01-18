@@ -1,13 +1,16 @@
-import sys
-from pathlib import Path
 import os
-import tempfile
-from typing import Tuple
 import subprocess
+import sys
+import tempfile
+from pathlib import Path
+from typing import Tuple
+
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from dog import VERSION
 
+ACTUAL_DOG_VERSION = VERSION
 DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)
 
 

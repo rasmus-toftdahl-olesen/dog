@@ -11,13 +11,6 @@ from conftest import append_to_dog_config, DOG_PYTHON_UNDER_TEST, ACTUAL_DOG_VER
 
 
 @pytest.fixture
-def call_centos7(call_dog, tmp_path):
-    dog_config = tmp_path / 'dog.config'
-    dog_config.write_text('[dog]\nimage=rtol/centos-for-dog\n')
-    return call_dog
-
-
-@pytest.fixture
 def call_shell(call_centos7, tmp_path, my_dog, monkeypatch):
     if 'win32' in sys.platform:
         monkeypatch.setenv('DOG', f'"{DOG_PYTHON_UNDER_TEST}" "{my_dog}"')

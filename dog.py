@@ -54,7 +54,8 @@ def default_config() -> DogConfig:
             'verbose': False,
             'ports': {},
             'preserve-env': 'P4USER,P4PORT',
-            'ssh': True}
+            'ssh': True,
+            'perforce': True}
 
 
 def find_dog_config() -> Path:
@@ -82,7 +83,7 @@ def read_dog_config(dog_config: Path) -> DogConfig:
     return dog_config
 
 
-def parse_command_line_args() -> DogConfig:
+def parse_command_line_args(orig_argv) -> DogConfig:
     parser = argparse.ArgumentParser(description='Docker run wrapper to make it easier to call commands.')
     parser.add_argument('args', type=str, nargs='+', help='Command to call inside docker (with arguments)')
     parser.add_argument('--pull', dest='pull', action='store_const', const=True, help='Pull the latest version of the docker image')
@@ -98,8 +99,8 @@ def parse_command_line_args() -> DogConfig:
 
     # Insert the needed -- to seperate dog args with the rest of the commands
     # But only if the user did not do it himself
-    argv = list(sys.argv[1:])
-    own_name = os.path.basename(sys.argv[0])
+    argv = list(orig_argv[1:])
+    own_name = os.path.basename(orig_argv[0])
     if 'dog' not in own_name:
         argv.insert(0, own_name)
     if '--' not in argv:
@@ -156,11 +157,6 @@ def get_env_config() -> DogConfig:
     else:
         config['cwd'] = cwd
 
-    if sys.platform == 'win32':
-        config['volumes'] = {str(Path.home() / "dog_p4tickets.txt"): config["home"] + '/.p4tickets:ro'}
-    else:
-        config['volumes'] = {str(Path.home() / ".p4tickets"): config["home"] + '/.p4tickets:ro'}
-
     return config
 
 
@@ -183,6 +179,12 @@ def run(config: DogConfig):
 
     if config['ssh']:
         config['volumes'][str(Path.home() / ".ssh")] = config["home"] + '/.ssh:ro'
+
+    if config['perforce']:
+        if sys.platform == 'win32':
+            config['volumes'][str(Path.home() / "dog_p4tickets.txt")] = config["home"] + '/.p4tickets:ro'
+        else:
+            config['volumes'][str(Path.home() / ".p4tickets")] = config["home"] + '/.p4tickets:ro'
 
     args = []
     if config['sudo-outside-docker']:
@@ -239,8 +241,8 @@ def update_config(existing_config: DogConfig, new_config: DogConfig):
             existing_config[k] = copy.copy(new_config[k])
 
 
-def main() -> int:
-    command_line_config = parse_command_line_args()
+def main(argv) -> int:
+    command_line_config = parse_command_line_args(argv)
 
     default_conf = default_config()
     env_config = get_env_config()
@@ -300,4 +302,4 @@ def main() -> int:
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(main(sys.argv))

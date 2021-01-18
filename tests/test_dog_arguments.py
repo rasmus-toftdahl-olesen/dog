@@ -78,7 +78,7 @@ def test_verbose(call_centos7, capfd):
     '''--verbose should report the actual setup'''
     call_centos7('--verbose', 'id')
     captured = capfd.readouterr()
-    assert f'Dog Config' in captured.out
+    assert 'Dog Config' in captured.out
     assert "'verbose': True" in captured.out
 
 
@@ -121,7 +121,7 @@ def test_volumes(call_centos7, capstrip, tmp_path, system_temp_dir):
 
 
 def test_dog_is_too_old_for_minimum_version(call_centos7, tmp_path, capstrip):
-    append_to_dog_config(tmp_path, f'minimum-version=999999\n')
+    append_to_dog_config(tmp_path, 'minimum-version=999999\n')
     call_centos7('ls')
     captured = capstrip.get()
     assert 'Minimum version required (999999) is greater than your dog' in captured[1]
@@ -180,19 +180,19 @@ def test_preserve_env(call_centos7, tmp_path, capfd, monkeypatch):
     monkeypatch.delenv('MY_ENV_VAR', raising=False)
     call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
     captured = capfd.readouterr()
-    assert f'MY_ENV_VAR is' in captured.out
+    assert 'MY_ENV_VAR is' in captured.out
 
     # Then set the local variable - but still do not preserve it
     monkeypatch.setenv('MY_ENV_VAR', 'this is preserved')
     call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
     captured = capfd.readouterr()
-    assert f'MY_ENV_VAR is' in captured.out
+    assert 'MY_ENV_VAR is' in captured.out
 
     # Then preserve the local variable - expect it to be preserved now
     append_to_dog_config(tmp_path, '\npreserve-env=MY_ENV_VAR')
     call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
     captured = capfd.readouterr()
-    assert f'MY_ENV_VAR is this is preserved' in captured.out
+    assert 'MY_ENV_VAR is this is preserved' in captured.out
 
 
 def test_preserve_non_existing_env(call_centos7, tmp_path, capfd, monkeypatch):
@@ -200,4 +200,4 @@ def test_preserve_non_existing_env(call_centos7, tmp_path, capfd, monkeypatch):
     append_to_dog_config(tmp_path, '\npreserve-env=NON_EXISTING_VAR')
     assert call_centos7('echo', 'NON_EXISTING_VAR is $NON_EXISTING_VAR') == 0
     captured = capfd.readouterr()
-    assert f'NON_EXISTING_VAR is' in captured.out
+    assert 'NON_EXISTING_VAR is' in captured.out

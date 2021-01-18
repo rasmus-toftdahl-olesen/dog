@@ -103,7 +103,6 @@ def parse_command_line_args() -> DogConfig:
     if 'dog' not in own_name:
         argv.insert(0, own_name)
     if '--' not in argv:
-        first_normal_arg = -1
         for index, arg in enumerate(argv):
             if arg[0] != '-':
                 argv.insert(index, '--')

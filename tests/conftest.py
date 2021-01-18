@@ -8,7 +8,7 @@ from typing import Tuple
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from dog import VERSION
+from dog import VERSION  # noqa: E402
 
 ACTUAL_DOG_VERSION = VERSION
 DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)

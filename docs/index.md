@@ -1,6 +1,7 @@
 
 # Table Of Contents
 
-* [Usage](Usage)
+* [Usage / Tutorial](Usage)
+* [Key Selling Points](KeySellingPoints)
 * [Configuration](Configuration)
 * [Creating dog-enabled docker images](DogEnabledDockers)

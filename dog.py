@@ -87,7 +87,7 @@ def default_config() -> DogConfig:
             USER_ENV_VARS_IF_SET: {},
             VERBOSE: False,
             VOLUMES: {}
-           }
+            }
 
 
 def find_dog_config() -> Path:
@@ -112,7 +112,7 @@ def get_user_env_vars(config_user_env_vars: str, allow_empty: bool) -> dict:
         if value is not None:
             user_env_vars[env_var] = value
         elif not allow_empty:
-             fatal_error('{} was specified in {} but was not set in the current shell environment'.format(env_var, USER_ENV_VARS))
+            fatal_error('{} was specified in {} but was not set in the current shell environment'.format(env_var, USER_ENV_VARS))
     return user_env_vars
 
 
@@ -156,7 +156,6 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
     if 'dog' not in own_name:
         argv.insert(0, own_name)
     if '--' not in argv:
-        first_normal_arg = -1
         for index, arg in enumerate(argv):
             if arg[0] != '-':
                 argv.insert(index, '--')
@@ -179,14 +178,14 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
 def get_env_config() -> DogConfig:
     gid = os.getgid()
     home = os.getenv('HOME')
-    return {UID     : os.getuid(),
-            GID     : gid,
-            HOME    : home,
-            USER    : os.getenv('USER'),
+    return {UID: os.getuid(),
+            GID: gid,
+            HOME: home,
+            USER: os.getenv('USER'),
             HOSTNAME: platform.node(),
-            GROUP   : grp.getgrgid(gid).gr_name,
-            CWD     : Path.cwd()
-           }
+            GROUP: grp.getgrgid(gid).gr_name,
+            CWD: Path.cwd()
+            }
 
 
 def find_mount_point(p: Path):
@@ -268,11 +267,11 @@ def docker_compose_run(config: DogConfig) -> int:
     if config[VERBOSE]:
         args += ['--verbose',
                  '--log-level', 'DEBUG'
-                ]
+                 ]
     args += ['run',
              '--rm',
              '-w', str(config[CWD])
-            ]
+             ]
 
     for inside, outside in config[VOLUMES].items():
         args += ['-v', outside + ':' + inside]
@@ -320,7 +319,7 @@ def update_dependencies_in_config(config: DogConfig):
     if DOCKER_COMPOSE_FILE in config:
         if FULL_IMAGE in config or IMAGE in config:
             fatal_error('{} and {} both found in {}'.format(DOCKER_COMPOSE_FILE, IMAGE, CONFIG_FILE))
-        elif not DOCKER_COMPOSE_SERVICE in config:
+        elif DOCKER_COMPOSE_SERVICE not in config:
             fatal_error('{} must be specified when {} is in {}'.format(DOCKER_COMPOSE_SERVICE, DOCKER_COMPOSE_FILE, CONFIG_FILE))
     elif FULL_IMAGE not in config:
         if IMAGE not in config:

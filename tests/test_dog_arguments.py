@@ -107,7 +107,7 @@ def test_disabled_auto_mount(call_centos7, capstrip, tmp_path):
 
 def test_volumes(call_centos7, capstrip, tmp_path, system_temp_dir):
     '''Try adding the "system temp dir" as a volume in the dog.config.'''
-    append_to_dog_config(tmp_path, f'\n[volumes]\n{system_temp_dir}=/dog_test_of_system_temp\n')
+    append_to_dog_config(tmp_path, f'\n[volumes]\n/dog_test_of_system_temp={system_temp_dir}\n')
     call_centos7('mountpoint', '/dog_test_of_system_temp')
     captured = capstrip.get()
     assert captured == ('/dog_test_of_system_temp is a mountpoint', '')
@@ -170,6 +170,7 @@ def test_bad_registry(call_centos7, tmp_path, capfd):
 
 def test_preserve_env(call_centos7, tmp_path, capfd, monkeypatch):
     # First call without the local variable
+    append_to_dog_config(tmp_path, '\nexposed-dog-variables=home, group, gid, uid, user, as-root, preserve-env\npreserve-env=MY_ENV_VAR\n')
     monkeypatch.delenv('MY_ENV_VAR', raising=False)
     call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
     captured = capfd.readouterr()
@@ -182,7 +183,7 @@ def test_preserve_env(call_centos7, tmp_path, capfd, monkeypatch):
     assert 'MY_ENV_VAR is' in captured.out
 
     # Then preserve the local variable - expect it to be preserved now
-    append_to_dog_config(tmp_path, '\npreserve-env=MY_ENV_VAR')
+    append_to_dog_config(tmp_path, '\nuser-env-vars=MY_ENV_VAR\n')
     call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
     captured = capfd.readouterr()
     assert 'MY_ENV_VAR is this is preserved' in captured.out

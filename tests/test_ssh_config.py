@@ -1,11 +1,11 @@
+import os
 import subprocess
 import sys
-import os
 
 import pytest
 
 from conftest import DOG_PYTHON_UNDER_TEST
-from tests.conftest import append_to_dog_config
+from conftest import append_to_dog_config
 
 
 @pytest.fixture

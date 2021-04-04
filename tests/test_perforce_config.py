@@ -1,6 +1,6 @@
 import pytest
 
-from tests.conftest import append_to_dog_config
+from conftest import append_to_dog_config
 
 
 @pytest.fixture

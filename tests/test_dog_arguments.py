@@ -155,6 +155,12 @@ def test_dog_config_not_found(my_dog, system_temp_dir, capfd):
 
 
 @pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works in inside Demant (sorry!)')
+def test_pull_latest_esw_serverscripts_forge(call_dog, tmp_path, capstrip):
+    (tmp_path / 'dog.config').write_text('[dog]\nregistry=gitlab.kitenet.com:4567\nimage=esw/serverscripts/forge\n')
+    call_dog('echo', 'ok')
+
+
+@pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works in inside Demant (sorry!)')
 def test_registry(call_dog, tmp_path, capstrip):
     (tmp_path / 'dog.config').write_text('[dog]\nregistry=gitlab.kitenet.com:4567\nimage=esw/serverscripts/forge\n')
     call_dog('echo', 'ok')

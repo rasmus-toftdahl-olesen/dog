@@ -100,7 +100,7 @@ def find_dog_config() -> Path:
     cur = Path.cwd() / CONFIG_FILE
     for parent in cur.parents:
         dog_config = parent / CONFIG_FILE
-        if dog_config.is_file():
+        if os.path.isfile(str(dog_config)):
             return dog_config
 
     fatal_error('Could not find {} in current directory or on of its parents'.format(CONFIG_FILE))
@@ -190,16 +190,7 @@ def get_env_config() -> DogConfig:
         config[GID] = 1000
         config[USER] = os.getenv('USERNAME')
         config[GROUP] = 'nodoggroup'
-        config[HOME] = '/home/' + config["user"]
-        # Write a unix version of the p4tickets.txt file
-        win_version = Path.home() / 'p4tickets.txt'
-        unix_version = Path.home() / 'dog_p4tickets.txt'
-        if win_version.exists():
-            # Convert windows line endings to unix line endings
-            unix_version.write_bytes(win_version.read_text().encode('ascii'))
-        else:
-            unix_version.write_text('')
-
+        config[HOME] = '/home/' + config[USER]
     else:
         import grp
         config[UID] = os.getuid()
@@ -208,12 +199,12 @@ def get_env_config() -> DogConfig:
         config[USER] = os.getenv('USER')
         config[GROUP] = grp.getgrgid(config['gid']).gr_name
 
-    config[P4USER] = os.getenv('P4USER', config['user'])
+    config[P4USER] = os.getenv('P4USER', config[USER])
 
     cwd = Path.cwd()
     if sys.platform == 'win32':
         config[WIN32_CWD] = cwd
-        config[CWD] = '/' + cwd.drive[0] + '/' + str(cwd).replace('\\', '/')[2:]
+        config[CWD] = '/' + cwd.as_posix().replace(':', '')
     else:
         config[CWD] = cwd
 
@@ -272,8 +263,8 @@ def docker_run(config: DogConfig):
     args += ['docker']
     args += ['run',
              '--rm',
-             '--hostname=kbnuxdockerrtol',
-             '-w', str(config['cwd'])]
+             '--hostname={}'.format(config[HOSTNAME]),
+             '-w', str(config[CWD])]
 
     for outside, inside in config['volumes'].items():
         args += ['-v', outside + ':' + inside]
@@ -324,7 +315,7 @@ def update_dependencies_in_config(config: DogConfig):
             drive = config[WIN32_CWD].drive
             config[VOLUMES][drive + '\\'] = '/' + drive[0]
         else:
-            mount_point = str(find_mount_point(config['cwd']))
+            mount_point = str(find_mount_point(config[CWD]))
             config[VOLUMES][mount_point] = mount_point
 
     if config[SSH]:
@@ -332,6 +323,15 @@ def update_dependencies_in_config(config: DogConfig):
 
     if config[PERFORCE]:
         if sys.platform == 'win32':
+            # Write a unix version of the p4tickets.txt file
+            win_version = Path.home() / 'p4tickets.txt'
+            unix_version = Path.home() / 'dog_p4tickets.txt'
+            if win_version.exists():
+                # Convert windows line endings to unix line endings
+                unix_version.write_bytes(win_version.read_text().encode('ascii'))
+            else:
+                unix_version.write_text('')
+
             config[VOLUMES][str(Path.home() / "dog_p4tickets.txt")] = config[HOME] + '/.p4tickets:ro'
         else:
             config[VOLUMES][str(Path.home() / ".p4tickets")] = config[HOME] + '/.p4tickets:ro'

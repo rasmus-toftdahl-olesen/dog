@@ -14,6 +14,10 @@ ACTUAL_DOG_VERSION = VERSION
 DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)
 
 
+def is_windows() -> bool:
+    return 'win32' in sys.platform
+
+
 @pytest.fixture
 def capstrip(capfd):
     class CapStrip:
@@ -27,7 +31,7 @@ def capstrip(capfd):
 
 @pytest.fixture
 def uid() -> int:
-    if 'win32' in sys.platform:
+    if is_windows():
         return 1000
     else:
         return os.getuid()
@@ -73,7 +77,7 @@ def call_main(my_dog, tmp_path, monkeypatch):
 
 @pytest.fixture
 def dog_env():
-    if 'win32' in sys.platform:
+    if is_windows():
         return '%DOG%'
     else:
         return '$DOG'
@@ -91,7 +95,7 @@ def append_to_dog_config(tmp_path: Path, extra_dog_config: str):
 
 @pytest.fixture
 def system_temp_dir() -> str:
-    if sys.platform == 'win32':
+    if is_windows():
         basedir = os.environ['TEMP']
     else:
         basedir = os.getenv('RUNNER_TEMP', '/tmp')

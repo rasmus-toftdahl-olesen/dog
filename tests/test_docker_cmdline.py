@@ -258,4 +258,3 @@ def test_perforce_win32(call_main, tmp_path, mock_subprocess, monkeypatch, home_
     args_left = std_assert_interactive(args_left)
     args_left = assert_env_params(args_left, ['USER=test_user', 'P4USER=test_user', 'P4PORT=perforce.emea.demant.com:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
     assert args_left == []
-

@@ -52,4 +52,4 @@ jobs:
           flake8 . --count --max-line-length=300 --show-source --statistics
       - name: Test with pytest
         run: |
-          pytest
+          pytest --basetemp /tmp/${{ github.actor }}/pytest_of_dog

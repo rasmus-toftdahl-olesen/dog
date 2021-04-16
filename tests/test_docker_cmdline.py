@@ -30,7 +30,7 @@ def mock_subprocess(monkeypatch) -> MockSubprocess:
 
 @pytest.fixture(autouse=True)
 def mock_env_user(monkeypatch):
-    monkeypatch.setenv('USER', 'test_user')
+    monkeypatch.setenv('USER', 'dog_test_user')
 
 
 @pytest.fixture(autouse=True)
@@ -139,7 +139,7 @@ def std_assert_interactive(args_left):
 
 
 def std_assert_env_params(args_left):
-    return assert_env_params(args_left, ['USER=test_user', 'P4USER=test_user', 'P4PORT=perforce.emea.demant.com:5000', 'DOG_UID=1122', 'DOG_GID=5566', 'DOG_USER=test_user', 'DOG_GROUP=test_group', 'DOG_HOME=/home/test_home', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+    return assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=perforce.emea.demant.com:5000', 'DOG_UID=1122', 'DOG_GID=5566', 'DOG_USER=dog_test_user', 'DOG_GROUP=test_group', 'DOG_HOME=/home/test_home', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
 
 
 def test_simple_docker_cmdline(call_main, tmp_path, mock_subprocess):
@@ -224,7 +224,7 @@ class MockReadDogConfig:
 
 def mock_win32(monkeypatch, tmp_path, win_path, dog_config_contents: str):
     monkeypatch.setattr(sys, 'platform', 'win32')
-    monkeypatch.setenv('USERNAME', 'test_user')
+    monkeypatch.setenv('USERNAME', 'dog_test_user')
     monkeypatch.setattr(Path, 'cwd', lambda: win_path)
     monkeypatch.setattr(os.path, 'isfile', lambda x: True)
     append_to_dog_config(tmp_path, dog_config_contents)
@@ -242,7 +242,7 @@ def test_auto_mount_win32(call_main, tmp_path, mock_subprocess, monkeypatch):
     args_left = std_assert_hostname_param(args_left)
     args_left = assert_volume_params(args_left, [('/C', 'C:\\')])
     args_left = std_assert_interactive(args_left)
-    args_left = assert_env_params(args_left, ['USER=test_user', 'P4USER=test_user', 'P4PORT=perforce.emea.demant.com:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+    args_left = assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=perforce.emea.demant.com:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
     assert args_left == []
 
 
@@ -254,7 +254,7 @@ def test_perforce_win32(call_main, tmp_path, mock_subprocess, monkeypatch, home_
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])
     args_left = assert_workdir_param(args_left, '/C/tmp/test')
     args_left = std_assert_hostname_param(args_left)
-    args_left = assert_volume_params(args_left, [('/home/test_user/.p4tickets:ro', str(home_temp_dir / 'dog_p4tickets.txt'))])
+    args_left = assert_volume_params(args_left, [('/home/dog_test_user/.p4tickets:ro', str(home_temp_dir / 'dog_p4tickets.txt'))])
     args_left = std_assert_interactive(args_left)
-    args_left = assert_env_params(args_left, ['USER=test_user', 'P4USER=test_user', 'P4PORT=perforce.emea.demant.com:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+    args_left = assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=perforce.emea.demant.com:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
     assert args_left == []

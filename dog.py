@@ -183,6 +183,13 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
     return config
 
 
+def win32_to_dog_unix(win_path: Union[str, Path]) -> str:
+    """Convert a windows path to what i will be inside dog (unix)."""
+    if isinstance(win_path, str):
+        win_path = Path(win_path)
+    return '/' + win_path.as_posix().replace(':', '')
+
+
 def get_env_config() -> DogConfig:
     config = {}
     if sys.platform == 'win32':
@@ -204,7 +211,7 @@ def get_env_config() -> DogConfig:
     cwd = Path.cwd()
     if sys.platform == 'win32':
         config[WIN32_CWD] = cwd
-        config[CWD] = '/' + cwd.as_posix().replace(':', '')
+        config[CWD] = win32_to_dog_unix(cwd)
     else:
         config[CWD] = cwd
 
@@ -238,8 +245,10 @@ def docker_pull(config: DogConfig):
 def generate_env_arg_list(config: DogConfig) -> List[str]:
     args = []
     if not config[AS_ROOT]:
-        args.extend(['-e', 'USER=' + config[USER],
-                     '-e', 'P4USER=' + config[P4USER]])
+        if 'USER' not in config[USER_ENV_VARS].keys() and 'USER' not in config[USER_ENV_VARS_IF_SET].keys() and 'USER' not in config[PRESERVE_ENV].split(','):
+            args.extend(['-e', 'USER=' + config[USER]])
+        if 'P4USER' not in config[USER_ENV_VARS].keys() and 'P4USER' not in config[USER_ENV_VARS_IF_SET].keys() and 'P4USER' not in config[PRESERVE_ENV].split(','):
+            args.extend(['-e', 'P4USER=' + config[P4USER]])
 
     for env_var_name in config[PRESERVE_ENV].split(','):
         if env_var_name in os.environ:

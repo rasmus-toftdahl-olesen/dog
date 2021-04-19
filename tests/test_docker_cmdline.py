@@ -1,5 +1,4 @@
 import dog
-import grp
 import itertools
 import os
 import pytest
@@ -7,7 +6,7 @@ import subprocess
 import sys
 from collections.abc import Iterable
 from conftest import append_to_dog_config, is_windows
-from dog import DogConfig
+from dog import DogConfig, win32_to_dog_unix
 from pathlib import Path, PureWindowsPath
 from typing import List, Tuple
 
@@ -30,25 +29,35 @@ def mock_subprocess(monkeypatch) -> MockSubprocess:
 
 @pytest.fixture(autouse=True)
 def mock_env_user(monkeypatch):
-    monkeypatch.setenv('USER', 'dog_test_user')
+    if is_windows():
+        monkeypatch.setenv('USERNAME', 'dog_test_user')
+    else:
+        monkeypatch.setenv('USER', 'dog_test_user')
+    monkeypatch.setenv('P4USER', 'dog_test_user')
+    monkeypatch.setenv('P4PORT', 'my_perforce_server:5000')
 
 
 @pytest.fixture(autouse=True)
-def mock_env_home(monkeypatch):
-    monkeypatch.setenv('HOME', '/home/test_home')
+def mock_env_home(monkeypatch, home_temp_dir):
+    #monkeypatch.setenv('HOME', '/home/test_home')
+    pass
 
 
 @pytest.fixture(autouse=True)
 def mock_getuid(monkeypatch):
     uid = 1000 if is_windows() else 1122
-    monkeypatch.setattr(os, 'getuid', lambda: uid)
+    if not is_windows():
+        monkeypatch.setattr(os, 'getuid', lambda: uid)
 
 
 @pytest.fixture(autouse=True)
 def mock_group(monkeypatch):
     gid = 1000 if is_windows() else 5566
-    monkeypatch.setattr(os, 'getgid', lambda: gid)
     if not is_windows():
+        monkeypatch.setattr(os, 'getgid', lambda: gid)
+
+        import grp
+
         class MockGroup:
             gr_name = 'test_group'
         monkeypatch.setattr(grp, 'getgrgid', lambda x: MockGroup())
@@ -92,7 +101,7 @@ def assert_docker_image_and_cmd_inside_docker(run_args: List[str], expected_dock
     return run_args[:-(len(expected_cmd_inside_docker) + 1)]
 
 
-def assert_workdir_param(run_args: List[str], expected_workdir_path: Path) -> List[str]:
+def assert_workdir_param(run_args: List[str], expected_workdir_path: str) -> List[str]:
     workdir_params, args_left = split_single_cmdline_param('-w', run_args, include_value=True)
     assert ['-w', str(expected_workdir_path)] == workdir_params
     return args_left
@@ -131,7 +140,10 @@ def std_assert_hostname_param(args_left):
 
 
 def std_assert_volume_params(args_left):
-    return assert_volume_params(args_left, [('/tmp', '/tmp'), ('/home/test_home/.ssh:ro', '/home/test_home/.ssh'), ('/home/test_home/.p4tickets:ro', '/home/test_home/.p4tickets')])
+    if is_windows():
+        return assert_volume_params(args_left, [('/C', 'C:\\'), ('/home/dog_test_user/.ssh:ro', str(Path.home() / '.ssh')), ('/home/dog_test_user/.p4tickets:ro', str(Path.home() / 'dog_p4tickets.txt'))])
+    else:
+        return assert_volume_params(args_left, [('/tmp', '/tmp'), ('/home/test_home/.ssh:ro', '/home/test_home/.ssh'), ('/home/test_home/.p4tickets:ro', '/home/test_home/.p4tickets')])
 
 
 def std_assert_interactive(args_left):
@@ -139,7 +151,17 @@ def std_assert_interactive(args_left):
 
 
 def std_assert_env_params(args_left):
-    return assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=perforce.emea.demant.com:5000', 'DOG_UID=1122', 'DOG_GID=5566', 'DOG_USER=dog_test_user', 'DOG_GROUP=test_group', 'DOG_HOME=/home/test_home', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+    if is_windows():
+        return assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+    else:
+        return assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000', 'DOG_UID=1122', 'DOG_GID=5566', 'DOG_USER=dog_test_user', 'DOG_GROUP=test_group', 'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+
+
+def get_workdir(pth: Path) -> str:
+    if is_windows():
+        return win32_to_dog_unix(pth)
+    else:
+        return str(pth)
 
 
 def test_simple_docker_cmdline(call_main, tmp_path, mock_subprocess):
@@ -147,7 +169,7 @@ def test_simple_docker_cmdline(call_main, tmp_path, mock_subprocess):
     call_main('echo', 'foo')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'rtol/centos-for-dog', ['echo', 'foo'])
-    args_left = assert_workdir_param(args_left, tmp_path)
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_volume_params(args_left)
     args_left = std_assert_interactive(args_left)
@@ -161,7 +183,7 @@ def test_images(call_main, tmp_path, mock_subprocess, image_name: str):
     call_main('echo', 'foo')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, image_name, ['echo', 'foo'])
-    args_left = assert_workdir_param(args_left, tmp_path)
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_volume_params(args_left)
     args_left = std_assert_interactive(args_left)
@@ -175,7 +197,7 @@ def test_commands_in_docker(call_main, tmp_path, mock_subprocess, cmds: List[str
     call_main(*cmds)
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', cmds)
-    args_left = assert_workdir_param(args_left, tmp_path)
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_volume_params(args_left)
     args_left = std_assert_interactive(args_left)
@@ -189,7 +211,7 @@ def test_sudo_outside(call_main, tmp_path, mock_subprocess, test_sudo: List[Tupl
     call_main('my_inside_cmd')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args, test_sudo[1])
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])
-    args_left = assert_workdir_param(args_left, tmp_path)
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_volume_params(args_left)
     args_left = std_assert_interactive(args_left)
@@ -197,13 +219,19 @@ def test_sudo_outside(call_main, tmp_path, mock_subprocess, test_sudo: List[Tupl
     assert args_left == []
 
 
-@pytest.mark.parametrize('auto_mount', [('auto-mount=True', [('/tmp', '/tmp')]), ('auto-mount=False', []), ('', [('/tmp', '/tmp')])])
+if is_windows():
+    DEFAULT_MOUNT_POINT = ('/C', 'C:\\')
+else:
+    DEFAULT_MOUNT_POINT = ('/tmp', '/tmp')
+
+
+@pytest.mark.parametrize('auto_mount', [('auto-mount=True', [DEFAULT_MOUNT_POINT]), ('auto-mount=False', []), ('', [DEFAULT_MOUNT_POINT])])
 def test_auto_mount(call_main, tmp_path, mock_subprocess, auto_mount: List[Tuple[str, List[Tuple[str, str]]]]):
     append_to_dog_config(tmp_path, '[dog]\nimage=my_image\nperforce=False\nssh=False\n{}\n'.format(auto_mount[0]))
     call_main('my_inside_cmd')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])
-    args_left = assert_workdir_param(args_left, tmp_path)
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
     args_left = assert_volume_params(args_left, auto_mount[1])
     args_left = std_assert_interactive(args_left)
@@ -242,7 +270,7 @@ def test_auto_mount_win32(call_main, tmp_path, mock_subprocess, monkeypatch):
     args_left = std_assert_hostname_param(args_left)
     args_left = assert_volume_params(args_left, [('/C', 'C:\\')])
     args_left = std_assert_interactive(args_left)
-    args_left = assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=perforce.emea.demant.com:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+    args_left = assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
     assert args_left == []
 
 
@@ -256,5 +284,5 @@ def test_perforce_win32(call_main, tmp_path, mock_subprocess, monkeypatch, home_
     args_left = std_assert_hostname_param(args_left)
     args_left = assert_volume_params(args_left, [('/home/dog_test_user/.p4tickets:ro', str(home_temp_dir / 'dog_p4tickets.txt'))])
     args_left = std_assert_interactive(args_left)
-    args_left = assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=perforce.emea.demant.com:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+    args_left = assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
     assert args_left == []

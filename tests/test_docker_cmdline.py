@@ -1,14 +1,16 @@
-import dog
 import itertools
 import os
-import pytest
 import subprocess
 import sys
 from collections.abc import Iterable
-from conftest import append_to_dog_config, is_windows
-from dog import DogConfig, win32_to_dog_unix
 from pathlib import Path, PureWindowsPath
 from typing import List, Tuple
+
+import pytest
+
+import dog
+from conftest import append_to_dog_config, is_windows
+from dog import DogConfig, win32_to_dog_unix
 
 
 class MockSubprocess:
@@ -39,7 +41,7 @@ def mock_env_user(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def mock_env_home(monkeypatch, home_temp_dir):
-    #monkeypatch.setenv('HOME', '/home/test_home')
+    # monkeypatch.setenv('HOME', '/home/test_home')
     pass
 
 
@@ -60,6 +62,7 @@ def mock_group(monkeypatch):
 
         class MockGroup:
             gr_name = 'test_group'
+
         monkeypatch.setattr(grp, 'getgrgid', lambda x: MockGroup())
 
 

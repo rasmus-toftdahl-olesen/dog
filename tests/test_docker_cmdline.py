@@ -146,9 +146,10 @@ def std_assert_volume_params(args_left):
         return assert_volume_params(args_left, [('/C', 'C:\\'), ('/home/dog_test_user/.ssh:ro', str(Path.home() / '.ssh')), ('/home/dog_test_user/.p4tickets:ro', str(Path.home() / 'dog_p4tickets.txt'))])
     else:
         mount_point = str(find_mount_point(Path.cwd()))
+        user = os.getenv('USER')
         return assert_volume_params(args_left, [(mount_point, mount_point),
-                                                ('/home/test_home/.ssh:ro', str(Path.home() / '.ssh')),
-                                                ('/home/test_home/.p4tickets:ro', str(Path.home() / '.p4tickets'))])
+                                                (f'/home/{user}/.ssh:ro', str(Path.home() / '.ssh')),
+                                                (f'/home/{user}/.p4tickets:ro', str(Path.home() / '.p4tickets'))])
 
 
 def std_assert_interactive(args_left):

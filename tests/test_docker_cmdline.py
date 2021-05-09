@@ -228,7 +228,8 @@ def test_sudo_outside(call_main, tmp_path, mock_subprocess, test_sudo: List[Tupl
 if is_windows():
     DEFAULT_MOUNT_POINT = ('/C', 'C:\\')
 else:
-    DEFAULT_MOUNT_POINT = ('/tmp', '/tmp')
+    mount_point = str(find_mount_point(Path.cwd()))
+    DEFAULT_MOUNT_POINT = (mount_point, mount_point)
 
 
 @pytest.mark.parametrize('auto_mount', [('auto-mount=True', [DEFAULT_MOUNT_POINT]), ('auto-mount=False', []), ('', [DEFAULT_MOUNT_POINT])])

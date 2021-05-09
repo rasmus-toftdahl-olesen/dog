@@ -148,8 +148,8 @@ def std_assert_volume_params(args_left):
     else:
         mount_point = str(find_mount_point(Path.cwd()))
         return assert_volume_params(args_left, [(mount_point, mount_point),
-                                                (f'/home/dog_test_user/.ssh:ro', str(Path.home() / '.ssh')),
-                                                (f'/home/dog_test_user/.p4tickets:ro', str(Path.home() / '.p4tickets'))])
+                                                ('/home/dog_test_user/.ssh:ro', str(Path.home() / '.ssh')),
+                                                ('/home/dog_test_user/.p4tickets:ro', str(Path.home() / '.p4tickets'))])
 
 
 def std_assert_interactive(args_left):

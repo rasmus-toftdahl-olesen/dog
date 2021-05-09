@@ -46,7 +46,7 @@ def mock_env_home(monkeypatch, home_temp_dir):
 
 
 @pytest.fixture(autouse=True)
-def mock_getuid(monkeypatch):
+def mock_getuid(monkeypatch, tmp_path):
     uid = 1000 if is_windows() else 1122
     if not is_windows():
         monkeypatch.setattr(os, 'getuid', lambda: uid)

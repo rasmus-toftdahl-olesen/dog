@@ -10,7 +10,7 @@ import pytest
 
 import dog
 from conftest import append_to_dog_config, is_windows
-from dog import DogConfig, win32_to_dog_unix
+from dog import DogConfig, win32_to_dog_unix, find_mount_point
 
 
 class MockSubprocess:
@@ -146,7 +146,8 @@ def std_assert_volume_params(args_left):
     if is_windows():
         return assert_volume_params(args_left, [('/C', 'C:\\'), ('/home/dog_test_user/.ssh:ro', str(Path.home() / '.ssh')), ('/home/dog_test_user/.p4tickets:ro', str(Path.home() / 'dog_p4tickets.txt'))])
     else:
-        return assert_volume_params(args_left, [('/tmp', '/tmp'), ('/home/test_home/.ssh:ro', '/home/test_home/.ssh'), ('/home/test_home/.p4tickets:ro', '/home/test_home/.p4tickets')])
+        mount_point = str(find_mount_point(Path.cwd()))
+        return assert_volume_params(args_left, [(mount_point, mount_point), ('/home/test_home/.ssh:ro', '/home/test_home/.ssh'), ('/home/test_home/.p4tickets:ro', '/home/test_home/.p4tickets')])
 
 
 def std_assert_interactive(args_left):

@@ -34,7 +34,6 @@ def mock_env_user(monkeypatch):
     if is_windows():
         monkeypatch.setenv('USERNAME', 'dog_test_user')
     else:
-        monkeypatch.setenv('ACTUAL_USER', os.getenv('USER'))
         monkeypatch.setenv('USER', 'dog_test_user')
     monkeypatch.setenv('P4USER', 'dog_test_user')
     monkeypatch.setenv('P4PORT', 'my_perforce_server:5000')
@@ -42,7 +41,8 @@ def mock_env_user(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def mock_env_home(monkeypatch, home_temp_dir):
-    pass
+    if not is_windows():
+        monkeypatch.setenv('HOME', '/home/dog_test_user')
 
 
 @pytest.fixture(autouse=True)
@@ -147,10 +147,9 @@ def std_assert_volume_params(args_left):
         return assert_volume_params(args_left, [('/C', 'C:\\'), ('/home/dog_test_user/.ssh:ro', str(Path.home() / '.ssh')), ('/home/dog_test_user/.p4tickets:ro', str(Path.home() / 'dog_p4tickets.txt'))])
     else:
         mount_point = str(find_mount_point(Path.cwd()))
-        user = os.getenv('ACTUAL_USER')
         return assert_volume_params(args_left, [(mount_point, mount_point),
-                                                (f'/home/{user}/.ssh:ro', str(Path.home() / '.ssh')),
-                                                (f'/home/{user}/.p4tickets:ro', str(Path.home() / '.p4tickets'))])
+                                                (f'/home/dog_test_user/.ssh:ro', str(Path.home() / '.ssh')),
+                                                (f'/home/dog_test_user/.p4tickets:ro', str(Path.home() / '.p4tickets'))])
 
 
 def std_assert_interactive(args_left):

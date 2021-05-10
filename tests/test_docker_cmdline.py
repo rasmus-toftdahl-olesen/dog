@@ -30,7 +30,7 @@ def mock_subprocess(monkeypatch) -> MockSubprocess:
 
 
 @pytest.fixture(autouse=True)
-def mock_env_user(monkeypatch):
+def mock_env_user(monkeypatch, home_temp_dir):
     if is_windows():
         monkeypatch.setenv('USERNAME', 'dog_test_user')
     else:

@@ -138,7 +138,9 @@ def std_assert_hostname_param(args_left):
 
 def std_assert_volume_params(tmp_path, args_left):
     if is_windows():
-        return assert_volume_params(args_left, [('/C', 'C:\\'), ('/home/dog_test_user/.ssh:ro', str(Path.home() / '.ssh')), ('/home/dog_test_user/.p4tickets:ro', str(Path.home() / 'dog_p4tickets.txt'))])
+        return assert_volume_params(args_left, [('/C', 'C:\\'),
+                                                ('/home/dog_test_user/.ssh:ro', str(Path.home() / '.ssh')),
+                                                ('/home/dog_test_user/.p4tickets:ro', str(Path.home() / 'dog_p4tickets.txt'))])
     else:
         mount_point = str(find_mount_point(tmp_path))
         return assert_volume_params(args_left, [(mount_point, mount_point),
@@ -152,9 +154,13 @@ def std_assert_interactive(args_left):
 
 def std_assert_env_params(home_temp_dir, args_left):
     if is_windows():
-        return assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+        return assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000',
+                                             'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup',
+                                             'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
     else:
-        return assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000', 'DOG_UID=1122', 'DOG_GID=5566', 'DOG_USER=dog_test_user', 'DOG_GROUP=test_group', f'DOG_HOME={home_temp_dir}', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+        return assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000',
+                                             'DOG_UID=1122', 'DOG_GID=5566', 'DOG_USER=dog_test_user', 'DOG_GROUP=test_group',
+                                             f'DOG_HOME={home_temp_dir}', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
 
 
 def get_workdir(pth: Path) -> str:
@@ -272,7 +278,9 @@ def test_auto_mount_win32(call_main, tmp_path, mock_subprocess, monkeypatch):
     args_left = assert_volume_params(args_left, [('/C', 'C:\\')])
     args_left = std_assert_interactive(args_left)
     args_left = assert_env_params(args_left,
-                                  ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup', f'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+                                  ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000',
+                                   'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup',
+                                   'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
     assert args_left == []
 
 
@@ -286,5 +294,7 @@ def test_perforce_win32(call_main, tmp_path, mock_subprocess, monkeypatch, home_
     args_left = std_assert_hostname_param(args_left)
     args_left = assert_volume_params(args_left, [('/home/dog_test_user/.p4tickets:ro', str(home_temp_dir / 'dog_p4tickets.txt'))])
     args_left = std_assert_interactive(args_left)
-    args_left = assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000', 'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup', 'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+    args_left = assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000',
+                                              'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup',
+                                              'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
     assert args_left == []

@@ -202,7 +202,7 @@ def get_env_config() -> DogConfig:
         import grp
         config[UID] = os.getuid()
         config[GID] = os.getgid()
-        config[HOME] = os.getenv('HOME')
+        config[HOME] = str(Path.home())
         config[USER] = os.getenv('USER')
         config[GROUP] = grp.getgrgid(config['gid']).gr_name
 

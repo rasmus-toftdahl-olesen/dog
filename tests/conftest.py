@@ -109,4 +109,6 @@ def system_temp_dir() -> str:
 def home_temp_dir(tmp_path_factory, monkeypatch) -> Path:
     tmphome = tmp_path_factory.mktemp('home')
     monkeypatch.setattr(Path, 'home', lambda: tmphome)
+    if not is_windows():
+        monkeypatch.setenv('HOME', str(tmphome))
     return tmphome

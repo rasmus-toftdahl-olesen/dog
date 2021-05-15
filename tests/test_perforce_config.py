@@ -12,10 +12,6 @@ def home_dir_with_perforce_file(home_temp_dir):
 
 def test_perforce_enabled(call_main, capstrip, tmp_path, home_dir_with_perforce_file):
     append_to_dog_config(tmp_path, '[dog]\nimage=rtol/centos-for-dog\n')
-    call_main('--verbose', 'id')
-    call_main('env')
-    call_main('echo', '~/.p4tickets')
-    call_main('ls', '-l', '~/.p4tickets')
     call_main('cat', '~/.p4tickets')
     stdout, stderr = capstrip.get()
     assert 'This is a mock p4 tickets file' in stdout, f'stdout:\n{stdout}\n\nstderr:\n{stderr}'

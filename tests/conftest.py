@@ -1,5 +1,4 @@
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -70,6 +69,8 @@ def call_main(my_dog, tmp_path, monkeypatch):
         for arg in args:
             cmd_line.append(str(arg))
         with monkeypatch.context() as m:
+            # Make the tmp_path (cwd) look like a mount point
+            monkeypatch.setattr(os.path, 'ismount', lambda s: s == str(tmp_path))
             m.chdir(tmp_path)
             return main(cmd_line)
 
@@ -112,5 +113,4 @@ def home_temp_dir(tmp_path_factory, monkeypatch) -> Path:
     monkeypatch.setattr(Path, 'home', lambda: tmphome)
     if not is_windows():
         monkeypatch.setenv('HOME', str(tmphome))
-    yield tmphome
-    shutil.rmtree(tmphome)
+    return tmphome

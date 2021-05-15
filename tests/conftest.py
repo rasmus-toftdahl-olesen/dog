@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -111,4 +112,5 @@ def home_temp_dir(tmp_path_factory, monkeypatch) -> Path:
     monkeypatch.setattr(Path, 'home', lambda: tmphome)
     if not is_windows():
         monkeypatch.setenv('HOME', str(tmphome))
-    return tmphome
+    yield tmphome
+    shutil.rmtree(tmphome)

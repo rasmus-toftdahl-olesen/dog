@@ -70,7 +70,15 @@ def call_main(my_dog, tmp_path, monkeypatch):
             cmd_line.append(str(arg))
         with monkeypatch.context() as m:
             # Make the tmp_path (cwd) look like a mount point
-            monkeypatch.setattr(os.path, 'ismount', lambda s: s == str(tmp_path))
+            real_os_path_is_mount = os.path.ismount
+
+            def my_is_mount(s):
+                if s == str(tmp_path):
+                    return True
+                else:
+                    return real_os_path_is_mount(s)
+
+            m.setattr(os.path, 'ismount', my_is_mount)
             m.chdir(tmp_path)
             return main(cmd_line)
 

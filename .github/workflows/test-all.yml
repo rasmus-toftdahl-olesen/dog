@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         # We want to support python 3.5 and forward (since python 3.5 is the default python on current debian stable)
-        python-version: [3.5, 3.6, 3.7, 3.8, 3.9]
+        python-version: [ 3.5, 3.6, 3.7, 3.8, 3.9 ]
 
     steps:
       - uses: actions/checkout@v2
@@ -52,4 +52,4 @@ jobs:
           flake8 . --count --max-line-length=300 --show-source --statistics
       - name: Test with pytest
         run: |
-          pytest --basetemp /home/runner/work/dog/pytest_tmp_dir
+          pytest

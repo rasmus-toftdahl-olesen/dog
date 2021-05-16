@@ -225,22 +225,22 @@ def test_sudo_outside(call_main, tmp_path, mock_subprocess, home_temp_dir, test_
     assert args_left == []
 
 
-if is_windows():
-    DEFAULT_MOUNT_POINT = ('/C', 'C:\\')
-else:
-    mount_point = str(find_mount_point(Path.cwd()))
-    DEFAULT_MOUNT_POINT = (mount_point, mount_point)
-
-
-@pytest.mark.parametrize('auto_mount', [('auto-mount=True', [DEFAULT_MOUNT_POINT]), ('auto-mount=False', []), ('', [DEFAULT_MOUNT_POINT])])
-def test_auto_mount(call_main, tmp_path, mock_subprocess, home_temp_dir, auto_mount: List[Tuple[str, List[Tuple[str, str]]]]):
-    append_to_dog_config(tmp_path, '[dog]\nimage=my_image\nperforce=False\nssh=False\n{}\n'.format(auto_mount[0]))
+@pytest.mark.parametrize('extra_dog_conf,default_mount_point', [('auto-mount=True', True), ('auto-mount=False', False), ('', True)])
+def test_auto_mount(call_main, tmp_path, mock_subprocess, home_temp_dir, extra_dog_conf: str, default_mount_point: bool):
+    append_to_dog_config(tmp_path, '[dog]\nimage=my_image\nperforce=False\nssh=False\n{}\n'.format(extra_dog_conf))
     call_main('my_inside_cmd')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
-    args_left = assert_volume_params(args_left, auto_mount[1])
+    if default_mount_point:
+        if is_windows():
+            args_left = assert_volume_params(args_left, [('/C', 'C:\\')])
+        else:
+            mount_point = str(find_mount_point(tmp_path))
+            args_left = assert_volume_params(args_left, [(mount_point, mount_point)])
+    else:
+        args_left = assert_volume_params(args_left, [])
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     assert args_left == []

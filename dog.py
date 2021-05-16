@@ -100,7 +100,7 @@ def find_dog_config() -> Path:
     cur = Path.cwd() / CONFIG_FILE
     for parent in cur.parents:
         dog_config = parent / CONFIG_FILE
-        if dog_config.is_file():
+        if os.path.isfile(str(dog_config)):
             return dog_config
 
     fatal_error('Could not find {} in current directory or on of its parents'.format(CONFIG_FILE))
@@ -183,6 +183,13 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
     return config
 
 
+def win32_to_dog_unix(win_path: Union[str, Path]) -> str:
+    """Convert a windows path to what i will be inside dog (unix)."""
+    if isinstance(win_path, str):
+        win_path = Path(win_path)
+    return '/' + win_path.as_posix().replace(':', '')
+
+
 def get_env_config() -> DogConfig:
     config = {}
     if sys.platform == 'win32':
@@ -190,30 +197,21 @@ def get_env_config() -> DogConfig:
         config[GID] = 1000
         config[USER] = os.getenv('USERNAME')
         config[GROUP] = 'nodoggroup'
-        config[HOME] = '/home/' + config["user"]
-        # Write a unix version of the p4tickets.txt file
-        win_version = Path.home() / 'p4tickets.txt'
-        unix_version = Path.home() / 'dog_p4tickets.txt'
-        if win_version.exists():
-            # Convert windows line endings to unix line endings
-            unix_version.write_bytes(win_version.read_text().encode('ascii'))
-        else:
-            unix_version.write_text('')
-
+        config[HOME] = '/home/' + config[USER]
     else:
         import grp
         config[UID] = os.getuid()
         config[GID] = os.getgid()
-        config[HOME] = os.getenv('HOME')
+        config[HOME] = str(Path.home())
         config[USER] = os.getenv('USER')
         config[GROUP] = grp.getgrgid(config['gid']).gr_name
 
-    config[P4USER] = os.getenv('P4USER', config['user'])
+    config[P4USER] = os.getenv('P4USER', config[USER])
 
     cwd = Path.cwd()
     if sys.platform == 'win32':
         config[WIN32_CWD] = cwd
-        config[CWD] = '/' + cwd.drive[0] + '/' + str(cwd).replace('\\', '/')[2:]
+        config[CWD] = win32_to_dog_unix(cwd)
     else:
         config[CWD] = cwd
 
@@ -247,8 +245,10 @@ def docker_pull(config: DogConfig):
 def generate_env_arg_list(config: DogConfig) -> List[str]:
     args = []
     if not config[AS_ROOT]:
-        args.extend(['-e', 'USER=' + config[USER],
-                     '-e', 'P4USER=' + config[P4USER]])
+        if 'USER' not in config[USER_ENV_VARS].keys() and 'USER' not in config[USER_ENV_VARS_IF_SET].keys() and 'USER' not in config[PRESERVE_ENV].split(','):
+            args.extend(['-e', 'USER=' + config[USER]])
+        if 'P4USER' not in config[USER_ENV_VARS].keys() and 'P4USER' not in config[USER_ENV_VARS_IF_SET].keys() and 'P4USER' not in config[PRESERVE_ENV].split(','):
+            args.extend(['-e', 'P4USER=' + config[P4USER]])
 
     for env_var_name in config[PRESERVE_ENV].split(','):
         if env_var_name in os.environ:
@@ -272,8 +272,8 @@ def docker_run(config: DogConfig):
     args += ['docker']
     args += ['run',
              '--rm',
-             '--hostname=kbnuxdockerrtol',
-             '-w', str(config['cwd'])]
+             '--hostname={}'.format(config[HOSTNAME]),
+             '-w', str(config[CWD])]
 
     for outside, inside in config['volumes'].items():
         args += ['-v', outside + ':' + inside]
@@ -324,7 +324,7 @@ def update_dependencies_in_config(config: DogConfig):
             drive = config[WIN32_CWD].drive
             config[VOLUMES][drive + '\\'] = '/' + drive[0]
         else:
-            mount_point = str(find_mount_point(config['cwd']))
+            mount_point = str(find_mount_point(config[CWD]))
             config[VOLUMES][mount_point] = mount_point
 
     if config[SSH]:
@@ -332,6 +332,15 @@ def update_dependencies_in_config(config: DogConfig):
 
     if config[PERFORCE]:
         if sys.platform == 'win32':
+            # Write a unix version of the p4tickets.txt file
+            win_version = Path.home() / 'p4tickets.txt'
+            unix_version = Path.home() / 'dog_p4tickets.txt'
+            if win_version.exists():
+                # Convert windows line endings to unix line endings
+                unix_version.write_bytes(win_version.read_text().encode('ascii'))
+            else:
+                unix_version.write_text('')
+
             config[VOLUMES][str(Path.home() / "dog_p4tickets.txt")] = config[HOME] + '/.p4tickets:ro'
         else:
             config[VOLUMES][str(Path.home() / ".p4tickets")] = config[HOME] + '/.p4tickets:ro'

@@ -110,7 +110,7 @@ def find_dog_config() -> Path:
     cur = Path.cwd() / CONFIG_FILE
     for parent in cur.parents:
         dog_config = parent / CONFIG_FILE
-        if dog_config.is_file():
+        if os.path.isfile(str(dog_config)):
             return dog_config
 
     fatal_error('Could not find {} in current directory or on of its parents'.format(CONFIG_FILE))

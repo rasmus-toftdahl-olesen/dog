@@ -397,7 +397,7 @@ def get_tool_version(tool: str) -> str:
     proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, universal_newlines=True)
     if proc.returncode:
         fatal_error('{} failed to run'.format(tool))
-    m = re.search('version (\d+\.\d+\.\d+)', proc.stdout)
+    m = re.search(r'version (\d+\.\d+\.\d+)', proc.stdout)
     try:
         return m.group(1)
     except (AttributeError, IndexError):

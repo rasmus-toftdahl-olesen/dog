@@ -5,6 +5,7 @@ import configparser
 import copy
 import os
 import pprint
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -19,8 +20,12 @@ AS_ROOT = 'as-root'
 AUTO_MOUNT = 'auto-mount'
 CONFIG_FILE = 'dog.config'
 CWD = 'cwd'
+DOCKER = 'docker'
+DOCKER_COMPOSE = 'docker-compose'
 DOCKER_COMPOSE_FILE = 'docker-compose-file'
+DOCKER_COMPOSE_MINIMUM_VERSION = 'docker-compose-minimum-version'
 DOCKER_COMPOSE_SERVICE = 'docker-compose-service'
+DOCKER_MINIMUM_VERSION = 'docker-minimum-version'
 DOG_CONFIG_PATH = 'dog-config-path'
 EXPOSED_DOG_VARIABLES = 'exposed-dog-variables'
 FULL_IMAGE = 'full-image'
@@ -30,13 +35,17 @@ HOME = 'home'
 HOSTNAME = 'hostname'
 IMAGE = 'image'
 INTERACTIVE = 'interactive'
+MINIMUM_VERSION = 'minimum-version'
 P4USER = 'p4user'
 PERFORCE = 'perforce'
 PORTS = 'ports'
 PRESERVE_ENV = 'preserve-env'
 PULL = 'pull'
 REGISTRY = 'registry'
+SANITY_CHECK = 'sanity-check'
+SANITY_CHECK_ALWAYS = 'sanity-check-always'
 SSH = 'ssh'
+SUDO = 'sudo'
 SUDO_OUTSIDE_DOCKER = 'sudo-outside-docker'
 TERMINAL = 'terminal'
 UID = 'uid'
@@ -83,6 +92,7 @@ def default_config() -> DogConfig:
             PORTS: {},
             PRESERVE_ENV: 'P4USER,P4PORT',
             PULL: False,
+            SANITY_CHECK_ALWAYS: False,
             SSH: True,
             PERFORCE: True,
             SUDO_OUTSIDE_DOCKER: False,
@@ -111,7 +121,7 @@ def list_from_config_entry(entry: str) -> List[str]:
     return [s.strip() for s in var_list]
 
 
-def get_user_env_vars(config_user_env_vars: str, allow_empty: bool) -> Dict[str, str]:
+def get_user_env_vars(config_user_env_vars: str, allow_empty: bool) -> Dict[str, Union[str, List[str]]]:
     env_var_list = list_from_config_entry(config_user_env_vars)
     user_env_vars = {}
     for env_var in env_var_list:
@@ -147,7 +157,6 @@ def read_dog_config(dog_config: Path) -> DogConfig:
 
 def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
     parser = argparse.ArgumentParser(description='Docker run wrapper to make it easier to call commands.')
-    parser.add_argument(ARGS, type=str, nargs='+', help='Command to call inside docker (with arguments)')
     parser.add_argument('--pull', dest=PULL, action='store_const', const=True, help='Pull the latest version of the docker image')
     interactive_group = parser.add_mutually_exclusive_group()
     interactive_group.add_argument('--interactive', dest=INTERACTIVE, action='store_const', const=True, help='Run interactive (keep stdin open)')
@@ -158,6 +167,9 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
     parser.add_argument('--as-root', dest=AS_ROOT, action='store_const', const=True, help='Run as root inside the docker')
     parser.add_argument('--version', action='version', version='dog version {}'.format(VERSION))
     parser.add_argument('--verbose', dest=VERBOSE, action='store_const', const=True, help='Provide more dog output (useful for debugging)')
+    sanity_check_group = parser.add_mutually_exclusive_group(required=True)
+    sanity_check_group.add_argument(ARGS, type=str, nargs='*', default=[], help='Command to call inside docker (with arguments)')
+    sanity_check_group.add_argument('--sanity-check', dest=SANITY_CHECK, action='store_const', const=True, help='Perform sanity check, i.e. is required docker-compose version available')
 
     # Insert the needed -- to seperate dog args with the rest of the commands
     # But only if the user did not do it himself
@@ -170,14 +182,14 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
                 break
     args = parser.parse_args(argv)
     config = vars(args)
-    if config['pull'] is None:
-        del config['pull']
-    if config['terminal'] is None:
-        del config['terminal']
-    if config['interactive'] is None:
-        del config['interactive']
-    if config['as-root'] is None:
-        del config['as-root']
+    if config[PULL] is None:
+        del config[PULL]
+    if config[TERMINAL] is None:
+        del config[TERMINAL]
+    if config[INTERACTIVE] is None:
+        del config[INTERACTIVE]
+    if config[AS_ROOT] is None:
+        del config[AS_ROOT]
     if config[VERBOSE] is None:
         del config[VERBOSE]
     return config
@@ -228,8 +240,8 @@ def docker_pull(config: DogConfig):
     if DOCKER_COMPOSE_FILE in config:
         fatal_error('{} is not compatible with pull'.format(DOCKER_COMPOSE_FILE))
     try:
-        args = ['sudo'] if config[SUDO_OUTSIDE_DOCKER] else []
-        args.append('docker')
+        args = [SUDO] if config[SUDO_OUTSIDE_DOCKER] else []
+        args.append(DOCKER)
         args += ['pull', config[FULL_IMAGE]]
         proc = subprocess.run(args)
         if proc.returncode != 0:
@@ -265,15 +277,16 @@ def generate_env_arg_list(config: DogConfig) -> List[str]:
     return args
 
 
-def docker_run(config: DogConfig):
+def docker_run(config: DogConfig) -> int:
     args = []
     if config[SUDO_OUTSIDE_DOCKER]:
-        args += ['sudo']
-    args += ['docker']
+        args += [SUDO]
+    args += [DOCKER]
     args += ['run',
              '--rm',
              '--hostname={}'.format(config[HOSTNAME]),
-             '-w', str(config[CWD])]
+             '-w', str(config[CWD])
+             ]
 
     for outside, inside in config['volumes'].items():
         args += ['-v', outside + ':' + inside]
@@ -314,8 +327,8 @@ def update_config(existing_config: DogConfig, new_config: DogConfig):
 
 def update_dependencies_in_config(config: DogConfig):
     """Update values in config depending on other values in config."""
-    if 'minimum-version' in config:
-        minimum_version = int(config['minimum-version'])
+    if MINIMUM_VERSION in config:
+        minimum_version = int(config[MINIMUM_VERSION])
         if VERSION < minimum_version:
             fatal_error('Minimum version required ({}) is greater than your dog version ({}) - please upgrade dog'.format(minimum_version, VERSION))
 
@@ -373,6 +386,38 @@ def update_dependencies_in_config(config: DogConfig):
     config[VOLUMES] = volumes
 
 
+def get_minimum_version_from_config(version_var: str, config: DogConfig) -> str:
+    if version_var not in config:
+        fatal_error('{} not found in {}'.format(version_var, CONFIG_FILE))
+    return config[version_var]
+
+
+def get_tool_version(tool: str) -> str:
+    args = [tool, '--version']
+    proc = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, universal_newlines=True)
+    if proc.returncode:
+        fatal_error('{} failed to run'.format(tool))
+    m = re.search(r'version (\d+\.\d+\.\d+)', proc.stdout)
+    try:
+        return m.group(1)
+    except (AttributeError, IndexError):
+        fatal_error('Could not parse version info from {}'.format(tool))
+
+
+def perform_sanity_check(config: DogConfig) -> int:
+    if DOCKER_COMPOSE_FILE in config:
+        min_version_config = DOCKER_COMPOSE_MINIMUM_VERSION
+        tool = DOCKER_COMPOSE
+    else:
+        min_version_config = DOCKER_MINIMUM_VERSION
+        tool = DOCKER
+    minimum_version = get_minimum_version_from_config(min_version_config, config)
+    tool_version = get_tool_version(tool)
+    if tool_version < minimum_version:
+        fatal_error('Version of {} ({}) is less than the minimum required version ({})'.format(tool, tool_version, minimum_version))
+    return 0
+
+
 def main(argv) -> int:
     command_line_config = parse_command_line_args(own_name=os.path.basename(argv[0]), argv=list(argv[1:]))
 
@@ -400,9 +445,15 @@ def main(argv) -> int:
         log_config('Environment', env_config)
         log_config('User', user_config, user_config_file)
         log_config('Dog', dog_config, dog_config_file)
+        log_config('Cmdline', command_line_config)
         log_config('Final', config)
 
-    if config['pull']:
+    if config[SANITY_CHECK_ALWAYS] or config[SANITY_CHECK]:
+        res = perform_sanity_check(config)
+        if config[SANITY_CHECK]:
+            return res
+
+    if config[PULL]:
         docker_pull(config)
 
     return docker_run(config)

@@ -30,21 +30,28 @@ def test_pull_git_for_dog(call_shell, capstrip, dog_env):
 
 @pytest.mark.skipif('GITHUB_ACTIONS' in os.environ, reason='This test does not work on GitHub actions since it uses SSH authentication')
 @pytest.mark.skipif('TEAMCITY_PROJECT_NAME' in os.environ, reason='This test only works locally - and probably only for rasmus-toftdahl-olesen!')
-def test_ssh_enabled(call_shell, capstrip, dog_env):
+def test_ssh_enabled(call_shell, capstrip, dog_env, tmp_path):
+    append_to_dog_config(tmp_path, [
+        '[volumes]',
+        '$home/.ssh:ro = ~/.ssh'
+        ])
     call_shell(f'{dog_env} git clone git@github.com:rasmus-toftdahl-olesen/dog.git')
     stdout, stderr = capstrip.get()
     assert 'Could not read from remote repository' not in stderr
 
 
 @pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works inside Demant (sorry!)')
-def test_ssh_enabled_demant(call_shell, capstrip, dog_env):
+def test_ssh_enabled_demant(call_shell, capstrip, dog_env, tmp_path):
+    append_to_dog_config(tmp_path, [
+        '[volumes]',
+        '$home/.ssh:ro = ~/.ssh'
+        ])
     call_shell(f'{dog_env} git clone git@gitlab.ci.demant.com/teamtc/builders')
     stdout, stderr = capstrip.get()
     assert 'Could not read from remote repository' not in stderr
 
 
 def test_ssh_disabled(call_shell, capstrip, dog_env, tmp_path):
-    append_to_dog_config(tmp_path, ['ssh=False'])
     call_shell(f'{dog_env} git clone git@github.com:rasmus-toftdahl-olesen/dog.git')
     stdout, stderr = capstrip.get()
     assert 'Could not read from remote repository' in stderr

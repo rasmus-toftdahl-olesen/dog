@@ -55,7 +55,7 @@ def call_dog(my_dog, tmp_path):
 
 
 @pytest.fixture
-def call_centos7(basic_dog_config, call_dog, tmp_path):
+def call_centos7(call_dog, basic_dog_config, tmp_path):
     append_to_dog_config(tmp_path, ['image=rtol/centos-for-dog'])
     return call_dog
 
@@ -98,7 +98,8 @@ def basic_dog_config(tmp_path):
     dog_config = tmp_path / 'dog.config'
     assert not dog_config.exists()
     append_to_dog_config(tmp_path, [
-        '[dog]'
+        '[dog]',
+        'dog-config-file-version = 1'
         ])
 
 
@@ -117,6 +118,6 @@ def system_temp_dir() -> str:
 @pytest.fixture
 def home_temp_dir(tmp_path_factory, monkeypatch) -> Path:
     tmphome = tmp_path_factory.mktemp('home')
-    monkeypatch.setattr(Path, 'home', lambda: tmphome)
+    monkeypatch.setenv('HOME', str(tmphome))
     yield tmphome
     shutil.rmtree(tmphome)

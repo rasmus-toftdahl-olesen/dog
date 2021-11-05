@@ -4,6 +4,7 @@ import argparse
 import configparser
 import copy
 import os
+import platform
 import pprint
 import re
 import subprocess
@@ -12,7 +13,8 @@ from pathlib import Path
 from typing import List, Dict, Union
 
 # Version of dog
-VERSION = 9
+VERSION = 10
+MAX_DOG_CONFIG_VERSION = 1
 
 # Constants for consistant naming of dog variables, etc.
 ARGS = 'args'
@@ -26,6 +28,7 @@ DOCKER_COMPOSE_FILE = 'docker-compose-file'
 DOCKER_COMPOSE_MINIMUM_VERSION = 'docker-compose-minimum-version'
 DOCKER_COMPOSE_SERVICE = 'docker-compose-service'
 DOCKER_MINIMUM_VERSION = 'docker-minimum-version'
+DOG_CONFIG_FILE_VERSION = 'dog-config-file-version'
 DOG_CONFIG_PATH = 'dog-config-path'
 EXPOSED_DOG_VARIABLES = 'exposed-dog-variables'
 FULL_IMAGE = 'full-image'
@@ -36,15 +39,11 @@ HOSTNAME = 'hostname'
 IMAGE = 'image'
 INTERACTIVE = 'interactive'
 MINIMUM_VERSION = 'minimum-version'
-P4USER = 'p4user'
-PERFORCE = 'perforce'
 PORTS = 'ports'
-PRESERVE_ENV = 'preserve-env'
 PULL = 'pull'
 REGISTRY = 'registry'
 SANITY_CHECK = 'sanity-check'
 SANITY_CHECK_ALWAYS = 'sanity-check-always'
-SSH = 'ssh'
 SUDO = 'sudo'
 SUDO_OUTSIDE_DOCKER = 'sudo-outside-docker'
 TERMINAL = 'terminal'
@@ -55,6 +54,7 @@ USER_ENV_VARS_IF_SET = 'user-env-vars-if-set'
 VERBOSE = 'verbose'
 VOLUMES = 'volumes'
 WIN32_CWD = 'win32-cwd'
+
 
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
 
@@ -82,19 +82,15 @@ def default_config() -> DogConfig:
             AS_ROOT: False,
             AUTO_MOUNT: True,
             CWD: '/home/nobody',
-            EXPOSED_DOG_VARIABLES: [UID, GID, USER, GROUP, HOME, AS_ROOT, PRESERVE_ENV],
+            EXPOSED_DOG_VARIABLES: [UID, GID, USER, GROUP, HOME, AS_ROOT],
             GID: 1000,
             GROUP: 'nogroup',
             HOME: '/home/nobody',
             HOSTNAME: 'dog_docker',
             INTERACTIVE: True,
-            P4USER: 'nobody',
             PORTS: {},
-            PRESERVE_ENV: 'P4USER,P4PORT',
             PULL: False,
             SANITY_CHECK_ALWAYS: False,
-            SSH: True,
-            PERFORCE: True,
             SUDO_OUTSIDE_DOCKER: False,
             TERMINAL: False,
             UID: 1000,
@@ -195,39 +191,35 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
     return config
 
 
-def win32_to_dog_unix(win_path: Union[str, Path]) -> str:
-    """Convert a windows path to what i will be inside dog (unix)."""
-    if isinstance(win_path, str):
-        win_path = Path(win_path)
+def win32_to_dog_unix(win_path: Path) -> str:
+    """Convert a windows path to what it will be inside dog (unix)."""
     return '/' + win_path.as_posix().replace(':', '')
 
 
 def get_env_config() -> DogConfig:
-    config = {}
     if sys.platform == 'win32':
-        config[UID] = 1000
-        config[GID] = 1000
-        config[USER] = os.getenv('USERNAME')
-        config[GROUP] = 'nodoggroup'
-        config[HOME] = '/home/' + config[USER]
+        user = os.getenv('USERNAME')
+        cwd = Path.cwd()
+        return {UID: 1000,
+                GID: 1000,
+                HOME: '/home/' + user,
+                USER: user,
+                HOSTNAME: platform.node(),
+                GROUP: 'nodoggroup',
+                CWD: win32_to_dog_unix(cwd),
+                WIN32_CWD: cwd
+                }
     else:
         import grp
-        config[UID] = os.getuid()
-        config[GID] = os.getgid()
-        config[HOME] = str(Path.home())
-        config[USER] = os.getenv('USER')
-        config[GROUP] = grp.getgrgid(config['gid']).gr_name
-
-    config[P4USER] = os.getenv('P4USER', config[USER])
-
-    cwd = Path.cwd()
-    if sys.platform == 'win32':
-        config[WIN32_CWD] = cwd
-        config[CWD] = win32_to_dog_unix(cwd)
-    else:
-        config[CWD] = cwd
-
-    return config
+        gid = os.getgid()
+        return {UID: os.getuid(),
+                GID: gid,
+                HOME: os.getenv('HOME'),
+                USER: os.getenv('USER'),
+                HOSTNAME: platform.node(),
+                GROUP: grp.getgrgid(gid).gr_name,
+                CWD: Path.cwd()
+                }
 
 
 def find_mount_point(p: Path):
@@ -256,16 +248,6 @@ def docker_pull(config: DogConfig):
 
 def generate_env_arg_list(config: DogConfig) -> List[str]:
     args = []
-    if not config[AS_ROOT]:
-        if 'USER' not in config[USER_ENV_VARS].keys() and 'USER' not in config[USER_ENV_VARS_IF_SET].keys() and 'USER' not in config[PRESERVE_ENV].split(','):
-            args.extend(['-e', 'USER=' + config[USER]])
-        if 'P4USER' not in config[USER_ENV_VARS].keys() and 'P4USER' not in config[USER_ENV_VARS_IF_SET].keys() and 'P4USER' not in config[PRESERVE_ENV].split(','):
-            args.extend(['-e', 'P4USER=' + config[P4USER]])
-
-    for env_var_name in config[PRESERVE_ENV].split(','):
-        if env_var_name in os.environ:
-            args.extend(['-e', '{}={}'.format(env_var_name, os.environ[env_var_name])])
-
     for name in config[EXPOSED_DOG_VARIABLES]:
         env_name = name.upper().replace('-', '_')
         args.extend(['-e', 'DOG_{}={}'.format(env_name, config[name])])
@@ -288,10 +270,10 @@ def docker_run(config: DogConfig) -> int:
              '-w', str(config[CWD])
              ]
 
-    for outside, inside in config['volumes'].items():
+    for inside, outside in config[VOLUMES].items():
         args += ['-v', outside + ':' + inside]
 
-    for outside, inside in config['ports'].items():
+    for inside, outside in config[PORTS].items():
         args += ['-p', outside + ':' + inside]
 
     if config[INTERACTIVE]:
@@ -315,6 +297,54 @@ def docker_run(config: DogConfig) -> int:
         return -1
 
 
+def docker_compose_run(config: DogConfig) -> int:
+    assert config[INTERACTIVE], 'non-interactive mode not supported for docker-compose'
+
+    args = ['sudo'] if config[SUDO_OUTSIDE_DOCKER] else []
+    args.extend([DOCKER_COMPOSE, '-f', str(Path(config[DOG_CONFIG_PATH]) / config[DOCKER_COMPOSE_FILE])])
+    cleanup_args = args.copy()
+    if config[VERBOSE]:
+        args += ['--verbose',
+                 '--log-level', 'DEBUG'
+                 ]
+    args += ['run',
+             '--rm',
+             '-w', str(config[CWD])
+             ]
+    cleanup_args += ['rm',
+                     '-f'
+                     ]
+
+    if not config[TERMINAL]:
+        args.append('-T')
+
+    for inside, outside in config[VOLUMES].items():
+        args += ['-v', outside + ':' + inside]
+
+    for inside, outside in config[PORTS].items():
+        args += ['-p', outside + ':' + inside]
+
+    args.extend(generate_env_arg_list(config))
+
+    args.append(config[DOCKER_COMPOSE_SERVICE])
+
+    args.extend(config[ARGS])
+
+    log_verbose(config, ' '.join(args))
+    try:
+        docker_compose_env = dict(os.environ)
+        for name in config[EXPOSED_DOG_VARIABLES]:
+            env_name = 'DOG_{}'.format(name.upper().replace('-', '_'))
+            docker_compose_env[env_name] = str(config[name])
+        proc = subprocess.run(args, env=docker_compose_env)
+        stderr_out = None if config[VERBOSE] else subprocess.DEVNULL
+        subprocess.run(cleanup_args, stdout=stderr_out, stderr=stderr_out)
+        return proc.returncode
+    except KeyboardInterrupt:
+        print('Dog received Ctrl+C')
+        return -1
+
+
 def update_config(existing_config: DogConfig, new_config: DogConfig):
     """Merge two DogConfigs - all exiting keys in exising_config will be replaced with the keys in new_config
        - except for dictionaries - they will be merged with the existing dictionary."""
@@ -327,6 +357,11 @@ def update_config(existing_config: DogConfig, new_config: DogConfig):
 
 def update_dependencies_in_config(config: DogConfig):
     """Update values in config depending on other values in config."""
+    dog_config_file_version = config.get(DOG_CONFIG_FILE_VERSION)
+    if dog_config_file_version is None:
+        fatal_error('Do not know how to handle a dog.config file without {} specified'.format(DOG_CONFIG_FILE_VERSION))
+    if int(dog_config_file_version) > MAX_DOG_CONFIG_VERSION:
+        fatal_error('Do not know how to interpret a dog.config file with version {} (max file version supported: {})'.format(dog_config_file_version, MAX_DOG_CONFIG_VERSION))
     if MINIMUM_VERSION in config:
         minimum_version = int(config[MINIMUM_VERSION])
         if VERSION < minimum_version:
@@ -335,28 +370,10 @@ def update_dependencies_in_config(config: DogConfig):
     if config[AUTO_MOUNT]:
         if sys.platform == 'win32':
             drive = config[WIN32_CWD].drive
-            config[VOLUMES][drive + '\\'] = '/' + drive[0]
+            config[VOLUMES]['/' + drive[0]] = drive + '\\'
         else:
             mount_point = str(find_mount_point(config[CWD]))
             config[VOLUMES][mount_point] = mount_point
-
-    if config[SSH]:
-        config[VOLUMES][str(Path.home() / ".ssh")] = config[HOME] + '/.ssh:ro'
-
-    if config[PERFORCE]:
-        if sys.platform == 'win32':
-            # Write a unix version of the p4tickets.txt file
-            win_version = Path.home() / 'p4tickets.txt'
-            unix_version = Path.home() / 'dog_p4tickets.txt'
-            if win_version.exists():
-                # Convert windows line endings to unix line endings
-                unix_version.write_bytes(win_version.read_text().encode('ascii'))
-            else:
-                unix_version.write_text('')
-
-            config[VOLUMES][str(Path.home() / "dog_p4tickets.txt")] = config[HOME] + '/.p4tickets:ro'
-        else:
-            config[VOLUMES][str(Path.home() / ".p4tickets")] = config[HOME] + '/.p4tickets:ro'
 
     if DOCKER_COMPOSE_FILE in config:
         if FULL_IMAGE in config or IMAGE in config:
@@ -373,16 +390,21 @@ def update_dependencies_in_config(config: DogConfig):
 
     home_path = str(Path.home())
     volumes = {}
-    for outside, inside in config[VOLUMES].items():
-        if inside.startswith('$' + HOME):
-            new_inside = config[HOME] + inside[5:]
+    for inside, outside in config[VOLUMES].items():
+        only_if_outside_exists = False
+        if inside[0] == '?':
+            only_if_outside_exists = True
+            new_inside = inside[1:]
         else:
             new_inside = inside
+        if new_inside.startswith('$' + HOME):
+            new_inside = config[HOME] + new_inside[5:]
         if outside.startswith('~'):
             new_outside = home_path + outside[1:]
         else:
             new_outside = outside
-        volumes[new_outside] = new_inside
+        if not only_if_outside_exists or os.path.exists(new_outside):
+            volumes[new_inside] = new_outside
     config[VOLUMES] = volumes
 
 
@@ -455,6 +477,9 @@ def main(argv) -> int:
 
     if config[PULL]:
         docker_pull(config)
+
+    if DOCKER_COMPOSE_FILE in config:
+        return docker_compose_run(config)
 
     return docker_run(config)
 

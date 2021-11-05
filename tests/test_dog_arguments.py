@@ -109,7 +109,7 @@ def test_volumes(call_centos7, capstrip, tmp_path, system_temp_dir):
     '''Try adding the "system temp dir" as a volume in the dog.config.'''
     append_to_dog_config(tmp_path, [
         '[volumes]',
-        f'{system_temp_dir}=/dog_test_of_system_temp'
+        f'/dog_test_of_system_temp={system_temp_dir}'
         ])
     call_centos7('mountpoint', '/dog_test_of_system_temp')
     captured = capstrip.get()
@@ -137,9 +137,7 @@ def test_dog_is_newer_than_minimum_version(call_centos7, tmp_path, capstrip):
     assert captured == ('ok', '')
 
 
-def test_no_image_given(call_dog, tmp_path, capfd):
-    dog_config = tmp_path / 'dog.config'
-    dog_config.write_text('[dog]\n\n')
+def test_no_image_given(call_dog, basic_dog_config, tmp_path, capfd):
     call_dog('echo ok')
     assert 'No image specified' in capfd.readouterr().err
 
@@ -183,7 +181,7 @@ def test_bad_registry(call_centos7, tmp_path, capfd):
     assert 'Unable to find image' in capfd.readouterr().err
 
 
-def test_preserve_env(call_centos7, tmp_path, capfd, monkeypatch):
+def test_user_env_vars(call_centos7, tmp_path, capfd, monkeypatch):
     # First call without the local variable
     monkeypatch.delenv('MY_ENV_VAR', raising=False)
     call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
@@ -197,7 +195,11 @@ def test_preserve_env(call_centos7, tmp_path, capfd, monkeypatch):
     assert 'MY_ENV_VAR is' in captured.out
 
     # Then preserve the local variable - expect it to be preserved now
-    append_to_dog_config(tmp_path, ['preserve-env=MY_ENV_VAR'])
+    append_to_dog_config(tmp_path, [
+        'exposed-dog-variables=gid,uid,user,group,home,as-root,preserve-env',
+        'user-env-vars=MY_ENV_VAR',
+        'preserve-env=MY_ENV_VAR'
+        ])
     call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
     captured = capfd.readouterr()
     assert 'MY_ENV_VAR is this is preserved' in captured.out
@@ -205,7 +207,11 @@ def test_preserve_env(call_centos7, tmp_path, capfd, monkeypatch):
 
 def test_preserve_non_existing_env(call_centos7, tmp_path, capfd, monkeypatch):
     monkeypatch.delenv('NON_EXISTING_VAR', raising=False)
-    append_to_dog_config(tmp_path, ['preserve-env=NON_EXISTING_VAR'])
+    append_to_dog_config(tmp_path, [
+        'exposed-dog-variables=gid,uid,user,group,home,as-root,preserve-env',
+        'user-env-vars-if-set=MY_ENV_VAR',
+        'preserve-env=NON_EXISTING_VAR'
+        ])
     assert call_centos7('echo', 'NON_EXISTING_VAR is $NON_EXISTING_VAR') == 0
     captured = capfd.readouterr()
     assert 'NON_EXISTING_VAR is' in captured.out

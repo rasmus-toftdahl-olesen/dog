@@ -24,21 +24,23 @@ def home_dir_with_perforce_file(home_temp_dir, monkeypatch, tmp_path):
     return home_temp_dir
 
 
-def test_perforce_enabled(call_main, capstrip, tmp_path, home_dir_with_perforce_file):
-    append_to_dog_config(tmp_path, '[dog]\nimage=rtol/centos-for-dog\n')
+def test_perforce_enabled(basic_dog_config, call_main, capstrip, tmp_path, home_dir_with_perforce_file):
+    append_to_dog_config(tmp_path, ['image=rtol/centos-for-dog'])
     call_main('cat', '~/.p4tickets')
     stdout, stderr = capstrip.get()
     assert 'This is a mock p4 tickets file' in stdout, f'stdout:\n{stdout}\n\nstderr:\n{stderr}'
 
 
-def test_perforce_enabled_but_no_file(call_main, tmp_path, home_temp_dir):
-    append_to_dog_config(tmp_path, '[dog]\nimage=rtol/centos-for-dog\n')
+def test_perforce_enabled_but_no_file(basic_dog_config, call_main, tmp_path, home_temp_dir):
+    append_to_dog_config(tmp_path, ['image=rtol/centos-for-dog'])
     assert call_main('env') == 0
 
 
-def test_perforce_disabled(call_main, capstrip, tmp_path, home_dir_with_perforce_file):
-    append_to_dog_config(tmp_path, '[dog]\nimage=rtol/centos-for-dog\n')
-    append_to_dog_config(tmp_path, '\nperforce=False')
+def test_perforce_disabled(basic_dog_config, call_main, capstrip, tmp_path, home_dir_with_perforce_file):
+    append_to_dog_config(tmp_path, [
+        'image=rtol/centos-for-dog',
+        'perforce=False'
+        ])
     call_main('cat', '~/.p4tickets')
     stdout, stderr = capstrip.get()
     assert '.p4tickets: No such file or directory' in stderr, f'stdout:\n{stdout}\n\nstderr:\n{stderr}'

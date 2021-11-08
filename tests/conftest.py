@@ -4,7 +4,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Tuple
+from typing import List, Tuple
 
 import pytest
 
@@ -55,9 +55,8 @@ def call_dog(my_dog, tmp_path):
 
 
 @pytest.fixture
-def call_centos7(call_dog, tmp_path):
-    dog_config = tmp_path / 'dog.config'
-    dog_config.write_text('[dog]\nimage=rtol/centos-for-dog\n')
+def call_centos7(basic_dog_config, call_dog, tmp_path):
+    append_to_dog_config(tmp_path, ['image=rtol/centos-for-dog'])
     return call_dog
 
 
@@ -84,14 +83,23 @@ def dog_env():
         return '$DOG'
 
 
-def append_to_dog_config(tmp_path: Path, extra_dog_config: str):
+def append_to_dog_config(tmp_path: Path, extra_dog_config_lines: List[str]):
     dog_config = tmp_path / 'dog.config'
     if dog_config.exists():
         old_config = dog_config.read_text()
     else:
         old_config = ''
-    new_config = old_config + extra_dog_config
+    new_config = old_config + '\n' + '\n'.join(extra_dog_config_lines) + '\n'
     dog_config.write_text(new_config)
+
+
+@pytest.fixture
+def basic_dog_config(tmp_path):
+    dog_config = tmp_path / 'dog.config'
+    assert not dog_config.exists()
+    append_to_dog_config(tmp_path, [
+        '[dog]'
+        ])
 
 
 @pytest.fixture

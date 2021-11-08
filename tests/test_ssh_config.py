@@ -9,13 +9,13 @@ from conftest import append_to_dog_config
 
 
 @pytest.fixture
-def call_shell(my_dog, monkeypatch, tmp_path):
+def call_shell(my_dog, basic_dog_config, monkeypatch, tmp_path):
     if 'win32' in sys.platform:
         monkeypatch.setenv('DOG', f'"{DOG_PYTHON_UNDER_TEST}" "{my_dog}"')
     else:
         monkeypatch.setenv('DOG', f'{DOG_PYTHON_UNDER_TEST} {my_dog}')
 
-    (tmp_path / 'dog.config').write_text('[dog]\nimage=rtol/git-for-dog')
+    append_to_dog_config(tmp_path, ['image=rtol/git-for-dog'])
 
     def call(shell_string: str):
         return subprocess.run(shell_string, shell=True, cwd=tmp_path)
@@ -36,7 +36,7 @@ def test_ssh_enabled(call_shell, capstrip, dog_env):
     assert 'Could not read from remote repository' not in stderr
 
 
-@pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works in inside Demant (sorry!)')
+@pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works inside Demant (sorry!)')
 def test_ssh_enabled_demant(call_shell, capstrip, dog_env):
     call_shell(f'{dog_env} git clone git@gitlab.ci.demant.com/teamtc/builders')
     stdout, stderr = capstrip.get()
@@ -44,7 +44,7 @@ def test_ssh_enabled_demant(call_shell, capstrip, dog_env):
 
 
 def test_ssh_disabled(call_shell, capstrip, dog_env, tmp_path):
-    append_to_dog_config(tmp_path, '\nssh=False')
+    append_to_dog_config(tmp_path, ['ssh=False'])
     call_shell(f'{dog_env} git clone git@github.com:rasmus-toftdahl-olesen/dog.git')
     stdout, stderr = capstrip.get()
     assert 'Could not read from remote repository' in stderr

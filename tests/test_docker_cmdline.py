@@ -170,8 +170,8 @@ def get_workdir(pth: Path) -> str:
         return str(pth)
 
 
-def test_simple_docker_cmdline(call_main, tmp_path, mock_subprocess, home_temp_dir):
-    append_to_dog_config(tmp_path, '[dog]\nimage=rtol/centos-for-dog\n')
+def test_simple_docker_cmdline(basic_dog_config, call_main, tmp_path, mock_subprocess, home_temp_dir):
+    append_to_dog_config(tmp_path, ['image=rtol/centos-for-dog'])
     call_main('echo', 'foo')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'rtol/centos-for-dog', ['echo', 'foo'])
@@ -184,8 +184,8 @@ def test_simple_docker_cmdline(call_main, tmp_path, mock_subprocess, home_temp_d
 
 
 @pytest.mark.parametrize('image_name', ['my_little_image', 'a/path/based/image'])
-def test_images(call_main, tmp_path, mock_subprocess, home_temp_dir, image_name: str):
-    append_to_dog_config(tmp_path, '[dog]\nimage={}\n'.format(image_name))
+def test_images(basic_dog_config, call_main, tmp_path, mock_subprocess, home_temp_dir, image_name: str):
+    append_to_dog_config(tmp_path, ['image={}'.format(image_name)])
     call_main('echo', 'foo')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, image_name, ['echo', 'foo'])
@@ -198,8 +198,8 @@ def test_images(call_main, tmp_path, mock_subprocess, home_temp_dir, image_name:
 
 
 @pytest.mark.parametrize('cmds', [['echo', 'foo'], ['cat', '/tmp/test.txt'], ['my_cmd']])
-def test_commands_in_docker(call_main, tmp_path, home_temp_dir, mock_subprocess, cmds: List[str]):
-    append_to_dog_config(tmp_path, '[dog]\nimage=my_image\n')
+def test_commands_in_docker(basic_dog_config, call_main, tmp_path, home_temp_dir, mock_subprocess, cmds: List[str]):
+    append_to_dog_config(tmp_path, ['image=my_image'])
     call_main(*cmds)
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', cmds)
@@ -212,8 +212,8 @@ def test_commands_in_docker(call_main, tmp_path, home_temp_dir, mock_subprocess,
 
 
 @pytest.mark.parametrize('test_sudo', [('sudo-outside-docker=True', True), ('sudo-outside-docker=False', False), ('', False)])
-def test_sudo_outside(call_main, tmp_path, mock_subprocess, home_temp_dir, test_sudo: List[Tuple[str, bool]]):
-    append_to_dog_config(tmp_path, '[dog]\nimage=my_image\n{}\n'.format(test_sudo[0]))
+def test_sudo_outside(basic_dog_config, call_main, tmp_path, mock_subprocess, home_temp_dir, test_sudo: List[Tuple[str, bool]]):
+    append_to_dog_config(tmp_path, ['image=my_image', test_sudo[0]])
     call_main('my_inside_cmd')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args, test_sudo[1])
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])
@@ -226,8 +226,13 @@ def test_sudo_outside(call_main, tmp_path, mock_subprocess, home_temp_dir, test_
 
 
 @pytest.mark.parametrize('extra_dog_conf,default_mount_point', [('auto-mount=True', True), ('auto-mount=False', False), ('', True)])
-def test_auto_mount(call_main, tmp_path, mock_subprocess, home_temp_dir, extra_dog_conf: str, default_mount_point: bool):
-    append_to_dog_config(tmp_path, '[dog]\nimage=my_image\nperforce=False\nssh=False\n{}\n'.format(extra_dog_conf))
+def test_auto_mount(basic_dog_config, call_main, tmp_path, mock_subprocess, home_temp_dir, extra_dog_conf: str, default_mount_point: bool):
+    append_to_dog_config(tmp_path, [
+        'image=my_image',
+        'perforce=False',
+        'ssh=False',
+        extra_dog_conf
+        ])
     call_main('my_inside_cmd')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])
@@ -257,7 +262,7 @@ class MockReadDogConfig:
         return self.orig_read_dog_config(path_to_dog_config)
 
 
-def mock_win32(monkeypatch, tmp_path, win_path, dog_config_contents: str):
+def mock_win32(monkeypatch, tmp_path, win_path, dog_config_contents: List[str]):
     monkeypatch.setattr(sys, 'platform', 'win32')
     monkeypatch.setenv('USERNAME', 'dog_test_user')
     monkeypatch.setattr(Path, 'cwd', lambda: win_path)
@@ -267,9 +272,9 @@ def mock_win32(monkeypatch, tmp_path, win_path, dog_config_contents: str):
     monkeypatch.setattr(dog, 'read_dog_config', mrdc.mocked_read_dog_config)
 
 
-def test_auto_mount_win32(call_main, tmp_path, mock_subprocess, monkeypatch):
+def test_auto_mount_win32(call_main, basic_dog_config, tmp_path, mock_subprocess, monkeypatch):
     win_path = PureWindowsPath('C:\\tmp\\test')
-    mock_win32(monkeypatch, tmp_path, win_path, '[dog]\nimage=my_image\nperforce=False\nssh=False\n')
+    mock_win32(monkeypatch, tmp_path, win_path, ['image=my_image', 'perforce=False', 'ssh=False'])
     call_main('my_inside_cmd')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])
@@ -284,9 +289,9 @@ def test_auto_mount_win32(call_main, tmp_path, mock_subprocess, monkeypatch):
     assert args_left == []
 
 
-def test_perforce_win32(call_main, tmp_path, mock_subprocess, monkeypatch, home_temp_dir):
+def test_perforce_win32(call_main, basic_dog_config, tmp_path, mock_subprocess, monkeypatch, home_temp_dir):
     win_path = PureWindowsPath('C:\\tmp\\test')
-    mock_win32(monkeypatch, tmp_path, win_path, '[dog]\nimage=my_image\nauto-mount=False\nperforce=True\nssh=False\n')
+    mock_win32(monkeypatch, tmp_path, win_path, ['image=my_image', 'auto-mount=False', 'perforce=True', 'ssh=False'])
     call_main('my_inside_cmd')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])

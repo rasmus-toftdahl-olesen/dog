@@ -30,6 +30,7 @@ DOCKER_COMPOSE_SERVICE = 'docker-compose-service'
 DOCKER_MINIMUM_VERSION = 'docker-minimum-version'
 DOG_CONFIG_FILE_VERSION = 'dog-config-file-version'
 DOG_CONFIG_PATH = 'dog-config-path'
+DOG_CONFIG_PATH_RESOLVE_SYMLINK = 'dog-config-path-resolve-symlink'
 EXPOSED_DOG_VARIABLES = 'exposed-dog-variables'
 FULL_IMAGE = 'full-image'
 GID = 'gid'
@@ -451,7 +452,10 @@ def main(argv) -> int:
         user_config = read_dog_config(user_config_file)
     dog_config_file = find_dog_config()
     dog_config = read_dog_config(dog_config_file)
-    dog_config[DOG_CONFIG_PATH] = str(dog_config_file.parent)
+    if dog_config.get(DOG_CONFIG_PATH_RESOLVE_SYMLINK, False):
+        dog_config[DOG_CONFIG_PATH] = str(dog_config_file.resolve().parent)
+    else:
+        dog_config[DOG_CONFIG_PATH] = str(dog_config_file.parent)
 
     config = {}
     update_config(config, default_conf)

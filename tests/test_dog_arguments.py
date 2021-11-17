@@ -99,7 +99,7 @@ def test_auto_mount_works(call_centos7, capstrip):
 
 def test_disabled_auto_mount(call_centos7, capstrip, tmp_path):
     '''disable auto-mount and make sure that we do not see the files in the current directory.'''
-    append_to_dog_config(tmp_path, 'auto-mount=False\n')
+    append_to_dog_config(tmp_path, ['auto-mount=False'])
     call_centos7('ls')
     captured = capstrip.get()
     assert captured == ('', '')
@@ -107,36 +107,37 @@ def test_disabled_auto_mount(call_centos7, capstrip, tmp_path):
 
 def test_volumes(call_centos7, capstrip, tmp_path, system_temp_dir):
     '''Try adding the "system temp dir" as a volume in the dog.config.'''
-    append_to_dog_config(tmp_path, f'\n[volumes]\n{system_temp_dir}=/dog_test_of_system_temp\n')
+    append_to_dog_config(tmp_path, [
+        '[volumes]',
+        f'/dog_test_of_system_temp={system_temp_dir}'
+        ])
     call_centos7('mountpoint', '/dog_test_of_system_temp')
     captured = capstrip.get()
     assert captured == ('/dog_test_of_system_temp is a mountpoint', '')
 
 
 def test_dog_is_too_old_for_minimum_version(call_centos7, tmp_path, capstrip):
-    append_to_dog_config(tmp_path, 'minimum-version=999999\n')
+    append_to_dog_config(tmp_path, ['minimum-version=999999'])
     call_centos7('ls')
     captured = capstrip.get()
     assert 'Minimum version required (999999) is greater than your dog' in captured[1]
 
 
 def test_dog_is_minimum_version(call_centos7, tmp_path, capstrip):
-    append_to_dog_config(tmp_path, f'minimum-version={ACTUAL_DOG_VERSION}\n')
+    append_to_dog_config(tmp_path, [f'minimum-version={ACTUAL_DOG_VERSION}'])
     call_centos7('echo ok')
     captured = capstrip.get()
     assert captured == ('ok', '')
 
 
 def test_dog_is_newer_than_minimum_version(call_centos7, tmp_path, capstrip):
-    append_to_dog_config(tmp_path, f'minimum-version={ACTUAL_DOG_VERSION - 1}\n')
+    append_to_dog_config(tmp_path, [f'minimum-version={ACTUAL_DOG_VERSION - 1}'])
     call_centos7('echo ok')
     captured = capstrip.get()
     assert captured == ('ok', '')
 
 
-def test_no_image_given(call_dog, tmp_path, capfd):
-    dog_config = tmp_path / 'dog.config'
-    dog_config.write_text('[dog]\n\n')
+def test_no_image_given(call_dog, basic_dog_config, tmp_path, capfd):
     call_dog('echo ok')
     assert 'No image specified' in capfd.readouterr().err
 
@@ -154,27 +155,33 @@ def test_dog_config_not_found(my_dog, system_temp_dir, capfd):
     assert 'ERROR' in capfd.readouterr().err
 
 
-@pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works in inside Demant (sorry!)')
-def test_pull_latest_esw_serverscripts_forge(call_dog, tmp_path, capstrip):
-    (tmp_path / 'dog.config').write_text('[dog]\nregistry=gitlab.kitenet.com:4567\nimage=esw/serverscripts/forge\n')
+@pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works inside Demant (sorry!)')
+def test_pull_latest_esw_serverscripts_forge(basic_dog_config, call_dog, tmp_path, capstrip):
+    append_to_dog_config(tmp_path, [
+        'registry=gitlab.kitenet.com:4567',
+        'image=esw/serverscripts/forge'
+        ])
     call_dog('echo', 'ok')
 
 
-@pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works in inside Demant (sorry!)')
-def test_registry(call_dog, tmp_path, capstrip):
-    (tmp_path / 'dog.config').write_text('[dog]\nregistry=gitlab.kitenet.com:4567\nimage=esw/serverscripts/forge\n')
+@pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works inside Demant (sorry!)')
+def test_registry(basic_dog_config, call_dog, tmp_path, capstrip):
+    append_to_dog_config(tmp_path, [
+        'registry=gitlab.kitenet.com:4567',
+        'image=esw/serverscripts/forge'
+        ])
     call_dog('echo', 'ok')
     assert capstrip.get() == ('ok', '')
 
 
 def test_bad_registry(call_centos7, tmp_path, capfd):
     # (tmp_path / 'dog.config').write_text('[dog]\nregistry=gitlab.kitenet.com:4567\nimage=esw/serverscripts/forge\n')
-    append_to_dog_config(tmp_path, '\nregistry=this-is-a-bad-registry')
+    append_to_dog_config(tmp_path, ['registry=this-is-a-bad-registry'])
     call_centos7('echo', 'ok')
     assert 'Unable to find image' in capfd.readouterr().err
 
 
-def test_preserve_env(call_centos7, tmp_path, capfd, monkeypatch):
+def test_user_env_vars(call_centos7, tmp_path, capfd, monkeypatch):
     # First call without the local variable
     monkeypatch.delenv('MY_ENV_VAR', raising=False)
     call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
@@ -188,7 +195,11 @@ def test_preserve_env(call_centos7, tmp_path, capfd, monkeypatch):
     assert 'MY_ENV_VAR is' in captured.out
 
     # Then preserve the local variable - expect it to be preserved now
-    append_to_dog_config(tmp_path, '\npreserve-env=MY_ENV_VAR')
+    append_to_dog_config(tmp_path, [
+        'exposed-dog-variables=gid,uid,user,group,home,as-root,preserve-env',
+        'user-env-vars=MY_ENV_VAR',
+        'preserve-env=MY_ENV_VAR'
+        ])
     call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
     captured = capfd.readouterr()
     assert 'MY_ENV_VAR is this is preserved' in captured.out
@@ -196,7 +207,11 @@ def test_preserve_env(call_centos7, tmp_path, capfd, monkeypatch):
 
 def test_preserve_non_existing_env(call_centos7, tmp_path, capfd, monkeypatch):
     monkeypatch.delenv('NON_EXISTING_VAR', raising=False)
-    append_to_dog_config(tmp_path, '\npreserve-env=NON_EXISTING_VAR')
+    append_to_dog_config(tmp_path, [
+        'exposed-dog-variables=gid,uid,user,group,home,as-root,preserve-env',
+        'user-env-vars-if-set=MY_ENV_VAR',
+        'preserve-env=NON_EXISTING_VAR'
+        ])
     assert call_centos7('echo', 'NON_EXISTING_VAR is $NON_EXISTING_VAR') == 0
     captured = capfd.readouterr()
     assert 'NON_EXISTING_VAR is' in captured.out

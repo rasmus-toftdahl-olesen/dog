@@ -1,5 +1,6 @@
 import itertools
 import os
+import platform
 import subprocess
 import sys
 from collections.abc import Iterable
@@ -58,6 +59,12 @@ def mock_group(monkeypatch):
             gr_name = 'test_group'
 
         monkeypatch.setattr(grp, 'getgrgid', lambda x: MockGroup())
+
+
+@pytest.fixture(autouse=True)
+def mock_hostname(monkeypatch):
+    hostname = 'mocked_hostname'
+    monkeypatch.setattr(platform, 'node', lambda: hostname)
 
 
 def split_single_cmdline_param(param: str, args: List[str], include_value: bool = False) -> Tuple[List[str], List[str]]:
@@ -133,19 +140,15 @@ def assert_env_params(run_args: List[str], expected_env_values: List[str]) -> Li
 
 
 def std_assert_hostname_param(args_left):
-    return assert_hostname_param(args_left, 'dog_docker')
+    return assert_hostname_param(args_left, 'mocked_hostname')
 
 
 def std_assert_volume_params(tmp_path, args_left):
     if is_windows():
-        return assert_volume_params(args_left, [('/C', 'C:\\'),
-                                                ('/home/dog_test_user/.ssh:ro', str(Path.home() / '.ssh')),
-                                                ('/home/dog_test_user/.p4tickets:ro', str(Path.home() / 'dog_p4tickets.txt'))])
+        return assert_volume_params(args_left, [('/C', 'C:\\')])
     else:
         mount_point = str(find_mount_point(tmp_path))
-        return assert_volume_params(args_left, [(mount_point, mount_point),
-                                                (str(Path.home() / '.ssh:ro'), str(Path.home() / '.ssh')),
-                                                (str(Path.home() / '.p4tickets:ro'), str(Path.home() / '.p4tickets'))])
+        return assert_volume_params(args_left, [(mount_point, mount_point)])
 
 
 def std_assert_interactive(args_left):
@@ -154,13 +157,11 @@ def std_assert_interactive(args_left):
 
 def std_assert_env_params(home_temp_dir, args_left):
     if is_windows():
-        return assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000',
-                                             'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup',
-                                             'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+        return assert_env_params(args_left, ['DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup',
+                                             'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False'])
     else:
-        return assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000',
-                                             'DOG_UID=1122', 'DOG_GID=5566', 'DOG_USER=dog_test_user', 'DOG_GROUP=test_group',
-                                             f'DOG_HOME={home_temp_dir}', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+        return assert_env_params(args_left, ['DOG_UID=1122', 'DOG_GID=5566', 'DOG_USER=dog_test_user', 'DOG_GROUP=test_group',
+                                             f'DOG_HOME={home_temp_dir}', 'DOG_AS_ROOT=False'])
 
 
 def get_workdir(pth: Path) -> str:
@@ -170,8 +171,8 @@ def get_workdir(pth: Path) -> str:
         return str(pth)
 
 
-def test_simple_docker_cmdline(call_main, tmp_path, mock_subprocess, home_temp_dir):
-    append_to_dog_config(tmp_path, '[dog]\nimage=rtol/centos-for-dog\n')
+def test_simple_docker_cmdline(basic_dog_config, call_main, tmp_path, mock_subprocess, home_temp_dir):
+    append_to_dog_config(tmp_path, ['image=rtol/centos-for-dog'])
     call_main('echo', 'foo')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'rtol/centos-for-dog', ['echo', 'foo'])
@@ -184,8 +185,8 @@ def test_simple_docker_cmdline(call_main, tmp_path, mock_subprocess, home_temp_d
 
 
 @pytest.mark.parametrize('image_name', ['my_little_image', 'a/path/based/image'])
-def test_images(call_main, tmp_path, mock_subprocess, home_temp_dir, image_name: str):
-    append_to_dog_config(tmp_path, '[dog]\nimage={}\n'.format(image_name))
+def test_images(basic_dog_config, call_main, tmp_path, mock_subprocess, home_temp_dir, image_name: str):
+    append_to_dog_config(tmp_path, ['image={}'.format(image_name)])
     call_main('echo', 'foo')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, image_name, ['echo', 'foo'])
@@ -198,8 +199,8 @@ def test_images(call_main, tmp_path, mock_subprocess, home_temp_dir, image_name:
 
 
 @pytest.mark.parametrize('cmds', [['echo', 'foo'], ['cat', '/tmp/test.txt'], ['my_cmd']])
-def test_commands_in_docker(call_main, tmp_path, home_temp_dir, mock_subprocess, cmds: List[str]):
-    append_to_dog_config(tmp_path, '[dog]\nimage=my_image\n')
+def test_commands_in_docker(basic_dog_config, call_main, tmp_path, home_temp_dir, mock_subprocess, cmds: List[str]):
+    append_to_dog_config(tmp_path, ['image=my_image'])
     call_main(*cmds)
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', cmds)
@@ -212,8 +213,8 @@ def test_commands_in_docker(call_main, tmp_path, home_temp_dir, mock_subprocess,
 
 
 @pytest.mark.parametrize('test_sudo', [('sudo-outside-docker=True', True), ('sudo-outside-docker=False', False), ('', False)])
-def test_sudo_outside(call_main, tmp_path, mock_subprocess, home_temp_dir, test_sudo: List[Tuple[str, bool]]):
-    append_to_dog_config(tmp_path, '[dog]\nimage=my_image\n{}\n'.format(test_sudo[0]))
+def test_sudo_outside(basic_dog_config, call_main, tmp_path, mock_subprocess, home_temp_dir, test_sudo: List[Tuple[str, bool]]):
+    append_to_dog_config(tmp_path, ['image=my_image', test_sudo[0]])
     call_main('my_inside_cmd')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args, test_sudo[1])
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])
@@ -226,8 +227,11 @@ def test_sudo_outside(call_main, tmp_path, mock_subprocess, home_temp_dir, test_
 
 
 @pytest.mark.parametrize('extra_dog_conf,default_mount_point', [('auto-mount=True', True), ('auto-mount=False', False), ('', True)])
-def test_auto_mount(call_main, tmp_path, mock_subprocess, home_temp_dir, extra_dog_conf: str, default_mount_point: bool):
-    append_to_dog_config(tmp_path, '[dog]\nimage=my_image\nperforce=False\nssh=False\n{}\n'.format(extra_dog_conf))
+def test_auto_mount(basic_dog_config, call_main, tmp_path, mock_subprocess, home_temp_dir, extra_dog_conf: str, default_mount_point: bool):
+    append_to_dog_config(tmp_path, [
+        'image=my_image',
+        extra_dog_conf
+        ])
     call_main('my_inside_cmd')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])
@@ -257,7 +261,7 @@ class MockReadDogConfig:
         return self.orig_read_dog_config(path_to_dog_config)
 
 
-def mock_win32(monkeypatch, tmp_path, win_path, dog_config_contents: str):
+def mock_win32(monkeypatch, tmp_path, win_path, dog_config_contents: List[str]):
     monkeypatch.setattr(sys, 'platform', 'win32')
     monkeypatch.setenv('USERNAME', 'dog_test_user')
     monkeypatch.setattr(Path, 'cwd', lambda: win_path)
@@ -267,9 +271,9 @@ def mock_win32(monkeypatch, tmp_path, win_path, dog_config_contents: str):
     monkeypatch.setattr(dog, 'read_dog_config', mrdc.mocked_read_dog_config)
 
 
-def test_auto_mount_win32(call_main, tmp_path, mock_subprocess, monkeypatch):
+def test_auto_mount_win32(call_main, basic_dog_config, tmp_path, mock_subprocess, monkeypatch):
     win_path = PureWindowsPath('C:\\tmp\\test')
-    mock_win32(monkeypatch, tmp_path, win_path, '[dog]\nimage=my_image\nperforce=False\nssh=False\n')
+    mock_win32(monkeypatch, tmp_path, win_path, ['image=my_image'])
     call_main('my_inside_cmd')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])
@@ -278,23 +282,20 @@ def test_auto_mount_win32(call_main, tmp_path, mock_subprocess, monkeypatch):
     args_left = assert_volume_params(args_left, [('/C', 'C:\\')])
     args_left = std_assert_interactive(args_left)
     args_left = assert_env_params(args_left,
-                                  ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000',
-                                   'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup',
-                                   'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+                                  ['DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup',
+                                   'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False'])
     assert args_left == []
 
 
-def test_perforce_win32(call_main, tmp_path, mock_subprocess, monkeypatch, home_temp_dir):
+def test_perforce_win32(call_main, basic_dog_config, tmp_path, mock_subprocess, monkeypatch, home_temp_dir):
     win_path = PureWindowsPath('C:\\tmp\\test')
-    mock_win32(monkeypatch, tmp_path, win_path, '[dog]\nimage=my_image\nauto-mount=False\nperforce=True\nssh=False\n')
+    mock_win32(monkeypatch, tmp_path, win_path, ['image=my_image', 'auto-mount=False'])
     call_main('my_inside_cmd')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', ['my_inside_cmd'])
     args_left = assert_workdir_param(args_left, '/C/tmp/test')
     args_left = std_assert_hostname_param(args_left)
-    args_left = assert_volume_params(args_left, [('/home/dog_test_user/.p4tickets:ro', str(home_temp_dir / 'dog_p4tickets.txt'))])
     args_left = std_assert_interactive(args_left)
-    args_left = assert_env_params(args_left, ['USER=dog_test_user', 'P4USER=dog_test_user', 'P4PORT=my_perforce_server:5000',
-                                              'DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup',
-                                              'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False', 'DOG_PRESERVE_ENV=P4USER,P4PORT'])
+    args_left = assert_env_params(args_left, ['DOG_UID=1000', 'DOG_GID=1000', 'DOG_USER=dog_test_user', 'DOG_GROUP=nodoggroup',
+                                              'DOG_HOME=/home/dog_test_user', 'DOG_AS_ROOT=False'])
     assert args_left == []

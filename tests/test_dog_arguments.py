@@ -110,7 +110,7 @@ def test_volumes(call_centos7, capstrip, tmp_path, system_temp_dir):
     append_to_dog_config(tmp_path, [
         '[volumes]',
         f'/dog_test_of_system_temp={system_temp_dir}'
-        ])
+    ])
     call_centos7('mountpoint', '/dog_test_of_system_temp')
     captured = capstrip.get()
     assert captured == ('/dog_test_of_system_temp is a mountpoint', '')
@@ -156,20 +156,22 @@ def test_dog_config_not_found(my_dog, system_temp_dir, capfd):
 
 
 @pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works inside Demant (sorry!)')
-def test_pull_latest_esw_serverscripts_forge(basic_dog_config, call_dog, tmp_path, capstrip):
+def test_pull_latest_demant_debian(basic_dog_config, call_dog, tmp_path, capstrip):
+    """This test only exists to pull the latest image before the next test  - this is to make sure that the test does not fail
+        due to lots of "pullling layer ....blah.balh... output."""
     append_to_dog_config(tmp_path, [
-        'registry=gitlab.kitenet.com:4567',
-        'image=esw/serverscripts/forge'
-        ])
+        'registry=artifactory.oticon.com/demant-docker-local',
+        'image=demant-debian:buster-20211011-slim'
+    ])
     call_dog('echo', 'ok')
 
 
 @pytest.mark.skipif('TEAMCITY_PROJECT_NAME' not in os.environ, reason='This test only works inside Demant (sorry!)')
 def test_registry(basic_dog_config, call_dog, tmp_path, capstrip):
     append_to_dog_config(tmp_path, [
-        'registry=gitlab.kitenet.com:4567',
-        'image=esw/serverscripts/forge'
-        ])
+        'registry=artifactory.oticon.com/demant-docker-local',
+        'image=demant-debian:buster-20211011-slim'
+    ])
     call_dog('echo', 'ok')
     assert capstrip.get() == ('ok', '')
 
@@ -199,7 +201,7 @@ def test_user_env_vars(call_centos7, tmp_path, capfd, monkeypatch):
         'exposed-dog-variables=gid,uid,user,group,home,as-root,preserve-env',
         'user-env-vars=MY_ENV_VAR',
         'preserve-env=MY_ENV_VAR'
-        ])
+    ])
     call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')
     captured = capfd.readouterr()
     assert 'MY_ENV_VAR is this is preserved' in captured.out
@@ -211,7 +213,7 @@ def test_preserve_non_existing_env(call_centos7, tmp_path, capfd, monkeypatch):
         'exposed-dog-variables=gid,uid,user,group,home,as-root,preserve-env',
         'user-env-vars-if-set=MY_ENV_VAR',
         'preserve-env=NON_EXISTING_VAR'
-        ])
+    ])
     assert call_centos7('echo', 'NON_EXISTING_VAR is $NON_EXISTING_VAR') == 0
     captured = capfd.readouterr()
     assert 'NON_EXISTING_VAR is' in captured.out

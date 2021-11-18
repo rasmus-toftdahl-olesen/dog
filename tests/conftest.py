@@ -70,7 +70,8 @@ def call_main(my_dog, tmp_path, monkeypatch):
             cmd_line.append(str(arg))
         with monkeypatch.context() as m:
             m.chdir(tmp_path)
-            return main(cmd_line)
+            m.setattr('sys.argv', cmd_line)
+            return main()
 
     yield call
 

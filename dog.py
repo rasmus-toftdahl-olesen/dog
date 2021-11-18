@@ -441,8 +441,8 @@ def perform_sanity_check(config: DogConfig) -> int:
     return 0
 
 
-def main(argv) -> int:
-    command_line_config = parse_command_line_args(own_name=os.path.basename(argv[0]), argv=list(argv[1:]))
+def main() -> int:
+    command_line_config = parse_command_line_args(own_name=os.path.basename(sys.argv[0]), argv=list(sys.argv[1:]))
 
     default_conf = default_config()
     env_config = get_env_config()
@@ -489,4 +489,4 @@ def main(argv) -> int:
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv))
+    sys.exit(main())

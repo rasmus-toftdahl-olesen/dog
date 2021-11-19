@@ -56,7 +56,6 @@ VERBOSE = 'verbose'
 VOLUMES = 'volumes'
 WIN32_CWD = 'win32-cwd'
 
-
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
 
 
@@ -486,6 +485,10 @@ def main(argv) -> int:
         return docker_compose_run(config)
 
     return docker_run(config)
+
+
+def setup_tools_main():
+    return main(sys.argv)
 
 
 if __name__ == '__main__':

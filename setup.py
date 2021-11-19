@@ -20,7 +20,7 @@ setup(name='dog',
       url='https://github.com/rasmus-toftdahl-olesen/dog',
       py_modules=['dog'],
       entry_points={
-          'console_scripts': ['dog=dog:main'],
+          'console_scripts': ['dog=dog:setup_tools_main'],
       },
       scripts=['dog.py'],
       platforms='any',

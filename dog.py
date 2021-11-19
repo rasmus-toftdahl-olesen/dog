@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import List, Dict, Union
 
 # Version of dog
-VERSION = 10
+VERSION = 11
 MAX_DOG_CONFIG_VERSION = 1
 
 # Constants for consistant naming of dog variables, etc.

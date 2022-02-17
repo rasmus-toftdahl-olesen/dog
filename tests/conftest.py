@@ -1,12 +1,12 @@
+import configparser
 import os
-import shutil
+import pytest
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import List, Tuple
+from typing import Any, Mapping, List, Tuple
 
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from dog import VERSION, main  # noqa: E402
@@ -84,7 +84,10 @@ def dog_env():
 
 
 def append_to_dog_config(tmp_path: Path, extra_dog_config_lines: List[str]):
-    dog_config = tmp_path / 'dog.config'
+    if tmp_path.parts[-1] == '.dog.config':
+        dog_config = tmp_path
+    else:
+        dog_config = tmp_path / 'dog.config'
     if dog_config.exists():
         old_config = dog_config.read_text()
     else:
@@ -93,11 +96,26 @@ def append_to_dog_config(tmp_path: Path, extra_dog_config_lines: List[str]):
     dog_config.write_text(new_config)
 
 
+def update_dog_config(
+    config_file_path: Path, additional_config: Mapping[str, Mapping[str, Any]]
+):
+    if config_file_path.parts[-1] == '.dog.config':
+        dog_config = config_file_path
+    else:
+        dog_config = config_file_path / 'dog.config'
+    config = configparser.ConfigParser()
+    if dog_config.exists():
+        config.read(dog_config)
+    config.read_dict(additional_config)
+    with dog_config.open(mode='w') as f:
+        config.write(f)
+
+
 @pytest.fixture
 def basic_dog_config(tmp_path):
     dog_config = tmp_path / 'dog.config'
     assert not dog_config.exists()
-    append_to_dog_config(tmp_path, ['[dog]', 'dog-config-file-version = 1'])
+    update_dog_config(tmp_path, {'dog': {'dog-config-file-version': '1'}})
 
 
 @pytest.fixture
@@ -117,4 +135,3 @@ def home_temp_dir(tmp_path_factory, monkeypatch) -> Path:
     tmphome = tmp_path_factory.mktemp('home')
     monkeypatch.setenv('HOME', str(tmphome))
     yield tmphome
-    shutil.rmtree(tmphome)

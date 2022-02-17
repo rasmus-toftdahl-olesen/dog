@@ -1,13 +1,18 @@
 import getpass
 import os
+import pytest
 import re
 import subprocess
 import sys
+
+from conftest import (
+    ACTUAL_DOG_VERSION,
+    DOG_PYTHON_UNDER_TEST,
+    append_to_dog_config,
+    update_dog_config,
+)
+from dog import DOG_CONFIG_FILE_VERSION, MAX_DOG_CONFIG_VERSION
 from pathlib import Path
-
-import pytest
-
-from conftest import append_to_dog_config, DOG_PYTHON_UNDER_TEST, ACTUAL_DOG_VERSION
 
 
 @pytest.fixture
@@ -125,6 +130,20 @@ def test_dog_is_too_old_for_minimum_version(call_centos7, tmp_path, capstrip):
     expected_error = (
         'Minimum version required (999999) is greater than your dog version'
         f' ({ACTUAL_DOG_VERSION}) - please upgrade dog'
+    )
+    assert expected_error in captured[1]
+
+
+def test_dog_config_file_version_is_unknown(call_centos7, tmp_path, capstrip):
+    update_dog_config(
+        tmp_path, {'dog': {DOG_CONFIG_FILE_VERSION: MAX_DOG_CONFIG_VERSION + 1}}
+    )
+    call_centos7('ls')
+    captured = capstrip.get()
+    expected_error = (
+        'Do not know how to interpret a dog.config file with version'
+        f' {MAX_DOG_CONFIG_VERSION+1}'
+        f' (max file version supported: {MAX_DOG_CONFIG_VERSION})'
     )
     assert expected_error in captured[1]
 

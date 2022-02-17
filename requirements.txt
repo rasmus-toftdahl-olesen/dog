@@ -1,0 +1,7 @@
+# Required for development and test of dog (not for running)
+axblack
+flake8
+pytest
+setuptools
+twine
+wheel

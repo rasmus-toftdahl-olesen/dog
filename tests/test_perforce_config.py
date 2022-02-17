@@ -1,7 +1,5 @@
 import os
-
 import pytest
-
 from conftest import append_to_dog_config
 
 

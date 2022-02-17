@@ -551,19 +551,23 @@ def perform_sanity_check(config: DogConfig) -> int:
     return 0
 
 
-def main(argv) -> int:
+def read_config(argv) -> DogConfig:
     command_line_config = parse_command_line_args(
         own_name=os.path.basename(argv[0]), argv=list(argv[1:])
     )
 
     default_conf = default_config()
+
     env_config = get_env_config()
+
+    user_config = {}
     user_config_file = Path.home() / ('.' + CONFIG_FILE)
-    user_config = None
     if user_config_file.is_file():
         user_config = read_dog_config(user_config_file)
+
     dog_config_file = find_dog_config()
     dog_config = read_dog_config(dog_config_file)
+
     if dog_config.get(DOG_CONFIG_PATH_RESOLVE_SYMLINK, False):
         dog_config[DOG_CONFIG_PATH] = str(dog_config_file.resolve().parent)
     else:
@@ -572,12 +576,10 @@ def main(argv) -> int:
     config = {}
     update_config(config, default_conf)
     update_config(config, env_config)
-    if user_config:
-        update_config(config, user_config)
+    update_config(config, user_config)
     update_config(config, dog_config)
     update_config(config, command_line_config)
     update_dependencies_in_config(config)
-
     if config[VERBOSE]:
         log_config('Default', default_conf)
         log_config('Environment', env_config)
@@ -585,6 +587,11 @@ def main(argv) -> int:
         log_config('Dog', dog_config, dog_config_file)
         log_config('Cmdline', command_line_config)
         log_config('Final', config)
+    return config
+
+
+def main(argv) -> int:
+    config = read_config(argv)
 
     if config[SANITY_CHECK_ALWAYS] or config[SANITY_CHECK]:
         res = perform_sanity_check(config)

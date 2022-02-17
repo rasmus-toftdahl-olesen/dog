@@ -95,11 +95,15 @@ def test_interactive(call_read_config, basic_dog_config_with_image, tmp_path):
     update_dog_config(tmp_path, {'dog': {'interactive': False}})
     assert call_read_config()[INTERACTIVE] is False
     assert call_read_config('--interactive')[INTERACTIVE] is True
+    assert call_read_config('-i')[INTERACTIVE] is True
+    assert call_read_config('-it')[INTERACTIVE] is True
 
 
 def test_terminal(call_read_config, basic_dog_config_with_image, tmp_path):
     assert call_read_config()[TERMINAL] is False
     assert call_read_config('--terminal')[TERMINAL] is True
+    assert call_read_config('-t')[TERMINAL] is True
+    assert call_read_config('-it')[TERMINAL] is True
 
     update_dog_config(tmp_path, {'dog': {'terminal': True}})
     assert call_read_config()[TERMINAL] is True

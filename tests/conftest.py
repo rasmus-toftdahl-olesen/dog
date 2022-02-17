@@ -62,7 +62,7 @@ def call_centos7(call_dog, basic_dog_config, tmp_path):
 
 @pytest.fixture
 def call_main(my_dog, tmp_path, monkeypatch):
-    '''Call dog without using a sub-process'''
+    """Call dog without using a sub-process"""
 
     def call(*args: object):
         cmd_line = [str(my_dog)]
@@ -97,10 +97,7 @@ def append_to_dog_config(tmp_path: Path, extra_dog_config_lines: List[str]):
 def basic_dog_config(tmp_path):
     dog_config = tmp_path / 'dog.config'
     assert not dog_config.exists()
-    append_to_dog_config(tmp_path, [
-        '[dog]',
-        'dog-config-file-version = 1'
-        ])
+    append_to_dog_config(tmp_path, ['[dog]', 'dog-config-file-version = 1'])
 
 
 @pytest.fixture

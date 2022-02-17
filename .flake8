@@ -1,0 +1,6 @@
+# (ax)black does not format in compliance with E203 whitespace before ':', so ignore it
+# (ax)black uses line length of 88
+
+[flake8]
+ignore = E203
+max-line-length = 88

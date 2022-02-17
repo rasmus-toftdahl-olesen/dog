@@ -182,6 +182,7 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
     )
     interactive_group = parser.add_mutually_exclusive_group()
     interactive_group.add_argument(
+        '-i',
         '--interactive',
         dest=INTERACTIVE,
         action='store_const',
@@ -197,6 +198,7 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
     )
     terminal_group = parser.add_mutually_exclusive_group()
     terminal_group.add_argument(
+        '-t',
         '--terminal',
         dest=TERMINAL,
         action='store_const',

@@ -9,7 +9,7 @@ from typing import Any, Mapping, List, Tuple
 
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from dog import VERSION, main  # noqa: E402
+from dog import DOG, VERSION, main  # noqa: E402
 
 ACTUAL_DOG_VERSION = VERSION
 DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)
@@ -115,7 +115,7 @@ def update_dog_config(
 def basic_dog_config(tmp_path):
     dog_config = tmp_path / 'dog.config'
     assert not dog_config.exists()
-    update_dog_config(tmp_path, {'dog': {'dog-config-file-version': '1'}})
+    update_dog_config(tmp_path, {DOG: {'dog-config-file-version': '1'}})
 
 
 @pytest.fixture

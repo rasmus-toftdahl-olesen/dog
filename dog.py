@@ -28,6 +28,7 @@ DOCKER_COMPOSE_FILE = 'docker-compose-file'
 DOCKER_COMPOSE_MINIMUM_VERSION = 'docker-compose-minimum-version'
 DOCKER_COMPOSE_SERVICE = 'docker-compose-service'
 DOCKER_MINIMUM_VERSION = 'docker-minimum-version'
+DOG = 'dog'
 DOG_CONFIG_FILE_VERSION = 'dog-config-file-version'
 DOG_CONFIG_PATH = 'dog-config-path'
 DOG_CONFIG_PATH_RESOLVE_SYMLINK = 'dog-config-path-resolve-symlink'
@@ -49,6 +50,7 @@ SUDO = 'sudo'
 SUDO_OUTSIDE_DOCKER = 'sudo-outside-docker'
 TERMINAL = 'terminal'
 UID = 'uid'
+USB_DEVICES = 'usb-devices'
 USER = 'user'
 USER_ENV_VARS = 'user-env-vars'
 USER_ENV_VARS_IF_SET = 'user-env-vars-if-set'
@@ -57,6 +59,31 @@ VOLUMES = 'volumes'
 WIN32_CWD = 'win32-cwd'
 
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
+
+
+DEFAULT_CONFIG = {
+    ARGS: ['id'],
+    AS_ROOT: False,
+    AUTO_MOUNT: True,
+    CWD: '/home/nobody',
+    EXPOSED_DOG_VARIABLES: [UID, GID, USER, GROUP, HOME, AS_ROOT],
+    GID: 1000,
+    GROUP: 'nogroup',
+    HOME: '/home/nobody',
+    HOSTNAME: 'dog_docker',
+    INTERACTIVE: True,
+    PORTS: {},
+    PULL: False,
+    SANITY_CHECK_ALWAYS: False,
+    SUDO_OUTSIDE_DOCKER: False,
+    TERMINAL: False,
+    UID: 1000,
+    USER: 'nobody',
+    USER_ENV_VARS: {},
+    USER_ENV_VARS_IF_SET: {},
+    VERBOSE: False,
+    VOLUMES: {},
+}
 
 
 def log_verbose(config: DogConfig, txt: str):
@@ -75,32 +102,6 @@ def log_config(name: str, config: DogConfig, filename: Path = None):
 def fatal_error(text: str, error_code: int = -1):
     print('ERROR[dog]: {}'.format(text), file=sys.stderr)
     sys.exit(error_code)
-
-
-def default_config() -> DogConfig:
-    return {
-        ARGS: ['id'],
-        AS_ROOT: False,
-        AUTO_MOUNT: True,
-        CWD: '/home/nobody',
-        EXPOSED_DOG_VARIABLES: [UID, GID, USER, GROUP, HOME, AS_ROOT],
-        GID: 1000,
-        GROUP: 'nogroup',
-        HOME: '/home/nobody',
-        HOSTNAME: 'dog_docker',
-        INTERACTIVE: True,
-        PORTS: {},
-        PULL: False,
-        SANITY_CHECK_ALWAYS: False,
-        SUDO_OUTSIDE_DOCKER: False,
-        TERMINAL: False,
-        UID: 1000,
-        USER: 'nobody',
-        USER_ENV_VARS: {},
-        USER_ENV_VARS_IF_SET: {},
-        VERBOSE: False,
-        VOLUMES: {},
-    }
 
 
 def find_dog_config() -> Path:
@@ -141,14 +142,30 @@ def get_user_env_vars(
     return user_env_vars
 
 
-def read_dog_config(dog_config: Path) -> DogConfig:
+def read_dog_config(dog_config_file: Path) -> DogConfig:
     config = configparser.ConfigParser(delimiters='=')
-    config.read(str(dog_config))
-    dog_config = dict(config['dog'])
-    # Parse booleans - use default_config() to determine which values should be booleans
-    for k, v in default_config().items():
-        if isinstance(v, bool) and k in config['dog']:
-            dog_config[k] = config['dog'].getboolean(k)
+    config.read(str(dog_config_file))
+    dog_config = dict(config[DOG])
+
+    dog_config_file_version = dog_config.get(DOG_CONFIG_FILE_VERSION, None)
+    if dog_config_file_version is None:
+        fatal_error(
+            'Do not know how to handle a dog.config file without {} specified'.format(
+                DOG_CONFIG_FILE_VERSION
+            )
+        )
+    if int(dog_config_file_version) > MAX_DOG_CONFIG_VERSION:
+        fatal_error(
+            (
+                'Do not know how to interpret a dog.config file with version {}'
+                ' (max file version supported: {})'
+            ).format(dog_config_file_version, MAX_DOG_CONFIG_VERSION)
+        )
+
+    # Parse booleans - use DEFAULT_CONFIG to determine which values should be booleans
+    for k, v in DEFAULT_CONFIG.items():
+        if isinstance(v, bool) and k in config[DOG]:
+            dog_config[k] = config[DOG].getboolean(k)
 
     if EXPOSED_DOG_VARIABLES in dog_config:
         dog_config[EXPOSED_DOG_VARIABLES] = list_from_config_entry(
@@ -166,6 +183,10 @@ def read_dog_config(dog_config: Path) -> DogConfig:
         dog_config[PORTS] = dict(config[PORTS])
     if VOLUMES in config:
         dog_config[VOLUMES] = dict(config[VOLUMES])
+    if dog_config.get(DOG_CONFIG_PATH_RESOLVE_SYMLINK, False):
+        dog_config[DOG_CONFIG_PATH] = str(dog_config_file.resolve().parent)
+    else:
+        dog_config[DOG_CONFIG_PATH] = str(dog_config_file.parent)
     return dog_config
 
 
@@ -247,7 +268,7 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
 
     # Insert the needed -- to seperate dog args with the rest of the commands
     # But only if the user did not do it himself
-    if 'dog' not in own_name:
+    if DOG not in own_name:
         argv.insert(0, own_name)
     if '--' not in argv:
         for index, arg in enumerate(argv):
@@ -442,20 +463,6 @@ def update_config(existing_config: DogConfig, new_config: DogConfig):
 
 def update_dependencies_in_config(config: DogConfig):
     """Update values in config depending on other values in config."""
-    dog_config_file_version = config.get(DOG_CONFIG_FILE_VERSION)
-    if dog_config_file_version is None:
-        fatal_error(
-            'Do not know how to handle a dog.config file without {} specified'.format(
-                DOG_CONFIG_FILE_VERSION
-            )
-        )
-    if int(dog_config_file_version) > MAX_DOG_CONFIG_VERSION:
-        fatal_error(
-            (
-                'Do not know how to interpret a dog.config file with version {}'
-                ' (max file version supported: {})'
-            ).format(dog_config_file_version, MAX_DOG_CONFIG_VERSION)
-        )
     if MINIMUM_VERSION in config:
         minimum_version = int(config[MINIMUM_VERSION])
         if VERSION < minimum_version:
@@ -558,8 +565,6 @@ def read_config(argv) -> DogConfig:
         own_name=os.path.basename(argv[0]), argv=list(argv[1:])
     )
 
-    default_conf = default_config()
-
     env_config = get_env_config()
 
     user_config = {}
@@ -570,20 +575,15 @@ def read_config(argv) -> DogConfig:
     dog_config_file = find_dog_config()
     dog_config = read_dog_config(dog_config_file)
 
-    if dog_config.get(DOG_CONFIG_PATH_RESOLVE_SYMLINK, False):
-        dog_config[DOG_CONFIG_PATH] = str(dog_config_file.resolve().parent)
-    else:
-        dog_config[DOG_CONFIG_PATH] = str(dog_config_file.parent)
-
     config = {}
-    update_config(config, default_conf)
+    update_config(config, DEFAULT_CONFIG)
     update_config(config, env_config)
     update_config(config, user_config)
     update_config(config, dog_config)
     update_config(config, command_line_config)
     update_dependencies_in_config(config)
     if config[VERBOSE]:
-        log_config('Default', default_conf)
+        log_config('Default', DEFAULT_CONFIG)
         log_config('Environment', env_config)
         log_config('User', user_config, user_config_file)
         log_config('Dog', dog_config, dog_config_file)

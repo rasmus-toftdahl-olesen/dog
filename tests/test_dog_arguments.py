@@ -11,7 +11,7 @@ from conftest import (
     append_to_dog_config,
     update_dog_config,
 )
-from dog import DOG_CONFIG_FILE_VERSION, MAX_DOG_CONFIG_VERSION
+from dog import DOG, DOG_CONFIG_FILE_VERSION, MAX_DOG_CONFIG_VERSION
 from pathlib import Path
 
 
@@ -136,7 +136,7 @@ def test_dog_is_too_old_for_minimum_version(call_centos7, tmp_path, capstrip):
 
 def test_dog_config_file_version_is_unknown(call_centos7, tmp_path, capstrip):
     update_dog_config(
-        tmp_path, {'dog': {DOG_CONFIG_FILE_VERSION: MAX_DOG_CONFIG_VERSION + 1}}
+        tmp_path, {DOG: {DOG_CONFIG_FILE_VERSION: MAX_DOG_CONFIG_VERSION + 1}}
     )
     call_centos7('ls')
     captured = capstrip.get()

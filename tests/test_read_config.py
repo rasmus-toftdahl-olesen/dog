@@ -9,6 +9,7 @@ from dog import (
     AUTO_MOUNT,
     CONFIG_FILE,
     CWD,
+    DOG,
     EXPOSED_DOG_VARIABLES,
     GID,
     GROUP,
@@ -51,7 +52,7 @@ def call_read_config(my_dog, tmp_path, monkeypatch, dummy_dog_args):
 
 @pytest.fixture
 def basic_dog_config_with_image(tmp_path, basic_dog_config):
-    update_dog_config(tmp_path, {'dog': {'image': 'debian:latest'}})
+    update_dog_config(tmp_path, {DOG: {'image': 'debian:latest'}})
 
 
 def user_config_file(home_temp_dir, config):
@@ -92,7 +93,7 @@ def test_interactive(call_read_config, basic_dog_config_with_image, tmp_path):
     assert call_read_config()[INTERACTIVE] is True
     assert call_read_config('--not-interactive')[INTERACTIVE] is False
 
-    update_dog_config(tmp_path, {'dog': {'interactive': False}})
+    update_dog_config(tmp_path, {DOG: {'interactive': False}})
     assert call_read_config()[INTERACTIVE] is False
     assert call_read_config('--interactive')[INTERACTIVE] is True
     assert call_read_config('-i')[INTERACTIVE] is True
@@ -105,7 +106,7 @@ def test_terminal(call_read_config, basic_dog_config_with_image, tmp_path):
     assert call_read_config('-t')[TERMINAL] is True
     assert call_read_config('-it')[TERMINAL] is True
 
-    update_dog_config(tmp_path, {'dog': {'terminal': True}})
+    update_dog_config(tmp_path, {DOG: {'terminal': True}})
     assert call_read_config()[TERMINAL] is True
     assert call_read_config('--no-terminal')[TERMINAL] is False
 
@@ -116,11 +117,14 @@ def test_config_order(
     assert call_read_config()[TERMINAL] is False
     assert call_read_config()[PORTS] == {}
 
-    user_config_file(home_temp_dir, {'dog': {TERMINAL: True}, PORTS: {'80': '8080'}})
+    user_config_file(
+        home_temp_dir,
+        {DOG: {'dog-config-file-version': '1', TERMINAL: True}, PORTS: {'80': '8080'}},
+    )
     assert call_read_config()[TERMINAL] is True
     assert call_read_config()[PORTS] == {'80': '8080'}
 
-    update_dog_config(tmp_path, {'dog': {TERMINAL: False}, PORTS: {'80': '8888'}})
+    update_dog_config(tmp_path, {DOG: {TERMINAL: False}, PORTS: {'80': '8888'}})
     assert call_read_config()[TERMINAL] is False
     assert call_read_config()[PORTS] == {'80': '8888'}
 

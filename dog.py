@@ -41,6 +41,7 @@ HOSTNAME = 'hostname'
 IMAGE = 'image'
 INTERACTIVE = 'interactive'
 MINIMUM_VERSION = 'minimum-version'
+PODMAN = 'podman'
 PORTS = 'ports'
 PULL = 'pull'
 REGISTRY = 'registry'
@@ -54,6 +55,7 @@ USB_DEVICES = 'usb-devices'
 USER = 'user'
 USER_ENV_VARS = 'user-env-vars'
 USER_ENV_VARS_IF_SET = 'user-env-vars-if-set'
+USE_PODMAN = 'use-podman'
 VERBOSE = 'verbose'
 VERSION = 'version'
 VOLUMES = 'volumes'
@@ -82,6 +84,7 @@ DEFAULT_CONFIG = {
     USER: 'nobody',
     USER_ENV_VARS: {},
     USER_ENV_VARS_IF_SET: {},
+    USE_PODMAN: False,
     VERBOSE: False,
     VERSION: DOG_VERSION,
     VOLUMES: {},
@@ -355,12 +358,16 @@ def find_mount_point(p: Path):
     return p
 
 
+def docker_cmd(config: DogConfig) -> str:
+    return PODMAN if config[USE_PODMAN] else DOCKER
+
+
 def docker_pull(config: DogConfig):
     if DOCKER_COMPOSE_FILE in config:
         fatal_error('{} is not compatible with pull'.format(DOCKER_COMPOSE_FILE))
     try:
         args = [SUDO] if config[SUDO_OUTSIDE_DOCKER] else []
-        args.append(DOCKER)
+        args.append(docker_cmd(config))
         args += ['pull', config[FULL_IMAGE]]
         proc = subprocess.run(args)
         if proc.returncode != 0:
@@ -390,7 +397,7 @@ def docker_run(config: DogConfig) -> int:
     args = []
     if config[SUDO_OUTSIDE_DOCKER]:
         args += [SUDO]
-    args += [DOCKER]
+    args += [docker_cmd(config)]
     args += [
         'run',
         '--rm',
@@ -573,7 +580,7 @@ def perform_sanity_check(config: DogConfig) -> int:
         tool = DOCKER_COMPOSE
     else:
         min_version_config = DOCKER_MINIMUM_VERSION
-        tool = DOCKER
+        tool = docker_cmd(config)
     minimum_version = get_minimum_version_from_config(min_version_config, config)
     tool_version = get_tool_version(tool)
     if tool_version < minimum_version:

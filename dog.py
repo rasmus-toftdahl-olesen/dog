@@ -14,7 +14,7 @@ from typing import List, Dict, Union
 
 # Version of dog
 VERSION = 11
-MAX_DOG_CONFIG_VERSION = 1
+MAX_DOG_CONFIG_VERSION = 2
 
 # Constants for consistent naming of dog variables, etc.
 ARGS = 'args'
@@ -142,6 +142,26 @@ def get_user_env_vars(
     return user_env_vars
 
 
+def parse_volumes_v2(volumes):
+    res = {}
+    for key, vol in volumes.items():
+        outside, *inside = vol.split(':')
+        if isinstance(inside, list):
+            inside = ':'.join(inside)
+        if not inside:
+            fatal_error(
+                (
+                    '"{}={}" found in volumes section has unknown format.'
+                    ' Did you use dog.config v1 format in a v2 file?'
+                ).format(key, vol)
+            )
+        res[inside] = outside
+    return res
+
+
+volumes_parser = [lambda x: x, parse_volumes_v2]
+
+
 def read_dog_config(dog_config_file: Path) -> DogConfig:
     config = configparser.ConfigParser(delimiters='=')
     config.read(str(dog_config_file))
@@ -154,7 +174,8 @@ def read_dog_config(dog_config_file: Path) -> DogConfig:
                 DOG_CONFIG_FILE_VERSION
             )
         )
-    if int(dog_config_file_version) > MAX_DOG_CONFIG_VERSION:
+    dog_config_file_version = int(dog_config_file_version)
+    if dog_config_file_version > MAX_DOG_CONFIG_VERSION:
         fatal_error(
             (
                 'Do not know how to interpret a dog.config file with version {}'
@@ -182,7 +203,9 @@ def read_dog_config(dog_config_file: Path) -> DogConfig:
     if PORTS in config:
         dog_config[PORTS] = dict(config[PORTS])
     if VOLUMES in config:
-        dog_config[VOLUMES] = dict(config[VOLUMES])
+        dog_config[VOLUMES] = volumes_parser[dog_config_file_version - 1](
+            dict(config[VOLUMES])
+        )
     if dog_config.get(DOG_CONFIG_PATH_RESOLVE_SYMLINK, False):
         dog_config[DOG_CONFIG_PATH] = str(dog_config_file.resolve().parent)
     else:

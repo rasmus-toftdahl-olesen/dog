@@ -16,7 +16,16 @@ from conftest import (
     is_windows,
     ACTUAL_DOG_VERSION,
 )
-from dog import DogConfig, win32_to_dog_unix, find_mount_point, DOG, USE_PODMAN, IMAGE
+from dog import (
+    DogConfig,
+    win32_to_dog_unix,
+    find_mount_point,
+    DOG,
+    USE_PODMAN,
+    IMAGE,
+    USB_DEVICES,
+    UsbDevices,
+)
 
 
 class MockSubprocess:
@@ -146,6 +155,14 @@ def assert_volume_params(
         zip(['-v'] * len(expected_volume_mappings), vol_mapping_values)
     )
     assert expected_volume_params == volume_params
+    return args_left
+
+
+def assert_device_param(run_args: List[str], expected_device: str) -> List[str]:
+    if not expected_device:
+        return run_args
+    device_params, args_left = split_single_cmdline_param('--device=', run_args)
+    assert ['--device={}'.format(expected_device)] == device_params
     return args_left
 
 
@@ -435,4 +452,43 @@ def test_perforce_win32(
             f'DOG_VERSION={ACTUAL_DOG_VERSION}',
         ],
     )
+    assert args_left == []
+
+
+@pytest.mark.parametrize(
+    'usb_devices,expected_device',
+    [
+        ({}, ''),
+        ({'dev1': '1111:aaaa'}, '/dev/bus/usb/001/004'),
+        ({'dev1': '1111:aaaa'}, '/dev/bus/usb/001/004:/dev/bus/usb/002/013'),
+    ],
+)
+def test_device(
+    basic_dog_config_with_image,
+    call_main,
+    tmp_path,
+    mock_subprocess,
+    home_temp_dir,
+    monkeypatch,
+    usb_devices: dict,
+    expected_device: str,
+):
+    def test_path(x):
+        assert x == usb_devices['dev1']
+        return expected_device.split(':')
+
+    monkeypatch.setattr(UsbDevices, 'get_bus_paths', lambda _, x: test_path(x))
+
+    update_dog_config(tmp_path, {USB_DEVICES: usb_devices})
+    call_main('echo', 'foo')
+    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_image_and_cmd_inside_docker(
+        args_left, 'debian:latest', ['echo', 'foo']
+    )
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
+    args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_volume_params(tmp_path, args_left)
+    args_left = std_assert_interactive(args_left)
+    args_left = std_assert_env_params(home_temp_dir, args_left)
+    args_left = assert_device_param(args_left, expected_device)
     assert args_left == []

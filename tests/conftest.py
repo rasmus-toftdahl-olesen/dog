@@ -9,9 +9,9 @@ from typing import Any, Mapping, List, Tuple
 
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from dog import DOG, VERSION, main  # noqa: E402
+from dog import DOG, DOG_VERSION, main  # noqa: E402
 
-ACTUAL_DOG_VERSION = VERSION
+ACTUAL_DOG_VERSION = DOG_VERSION
 DOG_PYTHON_UNDER_TEST = os.getenv('DOG_PYTHON_UNDER_TEST', sys.executable)
 
 

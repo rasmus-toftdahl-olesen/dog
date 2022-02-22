@@ -2,7 +2,7 @@ import grp
 import os
 import platform
 import pytest
-from conftest import update_dog_config
+from conftest import ACTUAL_DOG_VERSION, update_dog_config
 from dog import (
     ARGS,
     AS_ROOT,
@@ -26,6 +26,7 @@ from dog import (
     USER_ENV_VARS,
     USER_ENV_VARS_IF_SET,
     VERBOSE,
+    VERSION,
     VOLUMES,
     read_config,
 )
@@ -67,7 +68,15 @@ def test_default_config(
     # Values not modified by environment
     assert config[AS_ROOT] is False
     assert config[AUTO_MOUNT] is True
-    assert config[EXPOSED_DOG_VARIABLES] == [UID, GID, USER, GROUP, HOME, AS_ROOT]
+    assert config[EXPOSED_DOG_VARIABLES] == [
+        UID,
+        GID,
+        USER,
+        GROUP,
+        HOME,
+        AS_ROOT,
+        VERSION,
+    ]
     assert config[INTERACTIVE] is True
     assert config[PORTS] == {}
     assert config[PULL] is False
@@ -77,6 +86,7 @@ def test_default_config(
     assert config[USER_ENV_VARS] == {}
     assert config[USER_ENV_VARS_IF_SET] == {}
     assert config[VERBOSE] is False
+    assert config[VERSION] == ACTUAL_DOG_VERSION
     # Values modified by current environment
     assert config[ARGS] == dummy_dog_args
     assert config[CWD] == tmp_path

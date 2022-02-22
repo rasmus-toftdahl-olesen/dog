@@ -10,7 +10,7 @@ from typing import List, Tuple
 import pytest
 
 import dog
-from conftest import append_to_dog_config, is_windows
+from conftest import append_to_dog_config, is_windows, ACTUAL_DOG_VERSION
 from dog import DogConfig, win32_to_dog_unix, find_mount_point
 
 
@@ -188,6 +188,7 @@ def std_assert_env_params(home_temp_dir, args_left):
                 'DOG_GROUP=nodoggroup',
                 'DOG_HOME=/home/dog_test_user',
                 'DOG_AS_ROOT=False',
+                f'DOG_VERSION={ACTUAL_DOG_VERSION}',
             ],
         )
     else:
@@ -200,6 +201,7 @@ def std_assert_env_params(home_temp_dir, args_left):
                 'DOG_GROUP=test_group',
                 f'DOG_HOME={home_temp_dir}',
                 'DOG_AS_ROOT=False',
+                f'DOG_VERSION={ACTUAL_DOG_VERSION}',
             ],
         )
 
@@ -386,6 +388,7 @@ def test_auto_mount_win32(
             'DOG_GROUP=nodoggroup',
             'DOG_HOME=/home/dog_test_user',
             'DOG_AS_ROOT=False',
+            f'DOG_VERSION={ACTUAL_DOG_VERSION}',
         ],
     )
     assert args_left == []
@@ -413,6 +416,7 @@ def test_perforce_win32(
             'DOG_GROUP=nodoggroup',
             'DOG_HOME=/home/dog_test_user',
             'DOG_AS_ROOT=False',
+            f'DOG_VERSION={ACTUAL_DOG_VERSION}',
         ],
     )
     assert args_left == []

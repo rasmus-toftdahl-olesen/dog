@@ -10,8 +10,13 @@ from typing import List, Tuple
 import pytest
 
 import dog
-from conftest import append_to_dog_config, is_windows, ACTUAL_DOG_VERSION
-from dog import DogConfig, win32_to_dog_unix, find_mount_point
+from conftest import (
+    append_to_dog_config,
+    update_dog_config,
+    is_windows,
+    ACTUAL_DOG_VERSION,
+)
+from dog import DogConfig, win32_to_dog_unix, find_mount_point, DOG, USE_PODMAN, IMAGE
 
 
 class MockSubprocess:
@@ -92,12 +97,13 @@ def flatten(container: Iterable) -> List:
 
 
 def assert_docker_std_cmdline(
-    run_args: List[str], sudo_outside: bool = False
+    run_args: List[str], sudo_outside: bool = False, use_podman: bool = False
 ) -> List[str]:
     expected_args = []
     if sudo_outside:
         expected_args.append('sudo')
-    expected_args.extend(['docker', 'run', '--rm'])
+    docker_cmd = 'podman' if use_podman else 'docker'
+    expected_args.extend([docker_cmd, 'run', '--rm'])
     assert expected_args == run_args[: len(expected_args)]
     return run_args[len(expected_args) :]
 
@@ -213,12 +219,22 @@ def get_workdir(pth: Path) -> str:
         return str(pth)
 
 
+@pytest.mark.parametrize('use_podman', [False, True])
 def test_simple_docker_cmdline(
-    basic_dog_config, call_main, tmp_path, mock_subprocess, home_temp_dir
+    basic_dog_config,
+    call_main,
+    tmp_path,
+    mock_subprocess,
+    home_temp_dir,
+    use_podman: bool,
 ):
-    append_to_dog_config(tmp_path, ['image=rtol/centos-for-dog'])
+    update_dog_config(
+        tmp_path, {DOG: {IMAGE: 'rtol/centos-for-dog', USE_PODMAN: use_podman}}
+    )
     call_main('echo', 'foo')
-    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_std_cmdline(
+        mock_subprocess.run_args, use_podman=use_podman
+    )
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'rtol/centos-for-dog', ['echo', 'foo']
     )

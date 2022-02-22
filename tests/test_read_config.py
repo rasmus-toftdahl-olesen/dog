@@ -22,6 +22,7 @@ from dog import (
     SUDO_OUTSIDE_DOCKER,
     TERMINAL,
     UID,
+    USB_DEVICES,
     USER,
     USER_ENV_VARS,
     USER_ENV_VARS_IF_SET,
@@ -29,6 +30,7 @@ from dog import (
     VERSION,
     VOLUMES,
     read_config,
+    UsbDevices,
 )
 
 
@@ -49,11 +51,6 @@ def call_read_config(my_dog, tmp_path, monkeypatch, dummy_dog_args):
             return read_config(argv)
 
     yield call
-
-
-@pytest.fixture
-def basic_dog_config_with_image(tmp_path, basic_dog_config):
-    update_dog_config(tmp_path, {DOG: {'image': 'debian:latest'}})
 
 
 def user_config_file(home_temp_dir, config):
@@ -212,3 +209,38 @@ def test_volumes_v2_using_v1_format(
         call_read_config()
     captured = capsys.readouterr()
     assert '"/foo=/bar" found in volumes' in captured.err
+
+
+def test_usb_devices(
+    call_read_config, basic_dog_config_with_image, tmp_path, monkeypatch
+):
+    assert call_read_config()[USB_DEVICES] == []
+
+    dev1 = '1111:aaaa'
+    dev2 = '2222:aaaa'
+    dev3 = 'cccc:dddd'
+    usb_dev_path1 = ['/dev/bus/usb/001/004']
+    usb_dev_path2 = ['/dev/bus/usb/002/013']
+    usb_dev_path3 = ['/dev/bus/usb/002/010', '/dev/bus/usb/001/002']
+
+    def test_path(x):
+        if x == dev1:
+            return usb_dev_path1
+        elif x == dev2:
+            return usb_dev_path2
+        elif x == dev3:
+            return usb_dev_path3
+        assert False
+
+    monkeypatch.setattr(UsbDevices, 'get_bus_paths', lambda _, x: test_path(x))
+
+    update_dog_config(tmp_path, {USB_DEVICES: {'dev1': dev1}})
+    assert call_read_config()[USB_DEVICES] == usb_dev_path1
+
+    update_dog_config(tmp_path, {USB_DEVICES: {'dev2': dev2}})
+    assert call_read_config()[USB_DEVICES] == usb_dev_path1 + usb_dev_path2
+
+    update_dog_config(tmp_path, {USB_DEVICES: {'dev3': dev3}})
+    assert (
+        call_read_config()[USB_DEVICES] == usb_dev_path1 + usb_dev_path2 + usb_dev_path3
+    )

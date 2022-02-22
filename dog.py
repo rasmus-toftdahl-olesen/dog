@@ -81,6 +81,7 @@ DEFAULT_CONFIG = {
     SUDO_OUTSIDE_DOCKER: False,
     TERMINAL: False,
     UID: 1000,
+    USB_DEVICES: {},
     USER: 'nobody',
     USER_ENV_VARS: {},
     USER_ENV_VARS_IF_SET: {},
@@ -89,6 +90,47 @@ DEFAULT_CONFIG = {
     VERSION: DOG_VERSION,
     VOLUMES: {},
 }
+
+
+class UsbDevices:
+    def __init__(self):
+        self.devs = {}
+        self._subdev_re = re.compile(r'^[0-9]+-[0-9]+(\.[0-9]+)*$')
+        self._find_devices()
+
+    def get_bus_paths(self, vendor_product):
+        devices = self.devs.get(vendor_product, None)
+        if not devices:
+            return []
+        return ['/dev/bus/usb/{0:03}/{1:03}'.format(dev[0], dev[1]) for dev in devices]
+
+    def _find_devices(self):
+        for p in Path('/sys/bus/usb/devices').glob('usb*'):
+            self._add_device(p)
+
+    def _add_device(self, p):
+        busnum = self.read_info(p / 'busnum')
+        devnum = self.read_info(p / 'devnum')
+        vendor = self.read_info(p / 'idVendor')
+        product = self.read_info(p / 'idProduct')
+        if busnum and devnum and vendor and product:
+            key = '{}:{}'.format(vendor, product)
+            try:
+                dev_list = self.devs[key]
+            except KeyError:
+                dev_list = []
+                self.devs[key] = dev_list
+            dev_list.append((int(busnum), int(devnum)))
+        for t in p.glob('{}-*'.format(busnum)):
+            m = self._subdev_re.match(str(t.name))
+            if m:
+                self._add_device(p / m[0])
+
+    @staticmethod
+    def read_info(path):
+        if not path.exists():
+            return ''
+        return path.read_text().rstrip()
 
 
 def log_verbose(config: DogConfig, txt: str):
@@ -207,6 +249,8 @@ def read_dog_config(dog_config_file: Path) -> DogConfig:
         )
     if PORTS in config:
         dog_config[PORTS] = dict(config[PORTS])
+    if USB_DEVICES in config:
+        dog_config[USB_DEVICES] = dict(config[USB_DEVICES])
     if VOLUMES in config:
         dog_config[VOLUMES] = volumes_parser[dog_config_file_version - 1](
             dict(config[VOLUMES])
@@ -418,6 +462,9 @@ def docker_run(config: DogConfig) -> int:
     if config[TERMINAL]:
         args.append('-t')
 
+    if config[USB_DEVICES]:
+        args.append('--device={}'.format(':'.join(config[USB_DEVICES])))
+
     env_args = generate_env_arg_list(config)
     args.extend(env_args)
 
@@ -533,6 +580,15 @@ def update_dependencies_in_config(config: DogConfig):
             config[FULL_IMAGE] = config[REGISTRY] + '/' + config[IMAGE]
         else:
             config[FULL_IMAGE] = config[IMAGE]
+
+    if USB_DEVICES in config:
+        usb_device_paths = []
+        system_usb_devices = UsbDevices()
+        for vendor_product in config[USB_DEVICES].values():
+            dev_path = system_usb_devices.get_bus_paths(vendor_product)
+            if dev_path:
+                usb_device_paths.extend(dev_path)
+        config[USB_DEVICES] = usb_device_paths
 
     home_path = str(Path.home())
     volumes = {}

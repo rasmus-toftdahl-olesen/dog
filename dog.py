@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import List, Dict, Union
 
 # Version of dog
-VERSION = 11
+DOG_VERSION = 11
 MAX_DOG_CONFIG_VERSION = 2
 
 # Constants for consistent naming of dog variables, etc.
@@ -55,6 +55,7 @@ USER = 'user'
 USER_ENV_VARS = 'user-env-vars'
 USER_ENV_VARS_IF_SET = 'user-env-vars-if-set'
 VERBOSE = 'verbose'
+VERSION = 'version'
 VOLUMES = 'volumes'
 WIN32_CWD = 'win32-cwd'
 
@@ -66,7 +67,7 @@ DEFAULT_CONFIG = {
     AS_ROOT: False,
     AUTO_MOUNT: True,
     CWD: '/home/nobody',
-    EXPOSED_DOG_VARIABLES: [UID, GID, USER, GROUP, HOME, AS_ROOT],
+    EXPOSED_DOG_VARIABLES: [UID, GID, USER, GROUP, HOME, AS_ROOT, VERSION],
     GID: 1000,
     GROUP: 'nogroup',
     HOME: '/home/nobody',
@@ -82,6 +83,7 @@ DEFAULT_CONFIG = {
     USER_ENV_VARS: {},
     USER_ENV_VARS_IF_SET: {},
     VERBOSE: False,
+    VERSION: DOG_VERSION,
     VOLUMES: {},
 }
 
@@ -264,7 +266,7 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
         help='Run as root inside the docker',
     )
     parser.add_argument(
-        '--version', action='version', version='dog version {}'.format(VERSION)
+        '--version', action=VERSION, version='dog version {}'.format(DOG_VERSION)
     )
     parser.add_argument(
         '--verbose',
@@ -488,12 +490,12 @@ def update_dependencies_in_config(config: DogConfig):
     """Update values in config depending on other values in config."""
     if MINIMUM_VERSION in config:
         minimum_version = int(config[MINIMUM_VERSION])
-        if VERSION < minimum_version:
+        if DOG_VERSION < minimum_version:
             fatal_error(
                 (
                     'Minimum version required ({}) is greater than your dog version'
                     ' ({}) - please upgrade dog'
-                ).format(minimum_version, VERSION)
+                ).format(minimum_version, DOG_VERSION)
             )
 
     if config[AUTO_MOUNT]:

@@ -132,3 +132,73 @@ def test_config_order(
 
     user_config_file(home_temp_dir, {PORTS: {'80': '80', '22': '222'}})
     assert call_read_config()[PORTS] == {'80': '8888', '22': '222'}
+
+
+def test_volumes_v1(
+    call_read_config, basic_dog_config_with_image, tmp_path, home_temp_dir
+):
+    update_dog_config(tmp_path, {DOG: {AUTO_MOUNT: False}})
+    assert call_read_config()[VOLUMES] == {}
+
+    update_dog_config(tmp_path, {VOLUMES: {'/foo': '/bar'}})
+    assert call_read_config()[VOLUMES] == {'/foo': '/bar'}
+
+    update_dog_config(tmp_path, {VOLUMES: {'/Foo': '/bar'}})
+    assert call_read_config()[VOLUMES] == {'/foo': '/bar'}
+
+    update_dog_config(tmp_path, {VOLUMES: {'/FOO': '/bar'}})
+    assert call_read_config()[VOLUMES] == {'/foo': '/bar'}
+
+    update_dog_config(tmp_path, {VOLUMES: {'/FOO': '/bar', '/foobar': '/baz'}})
+    assert call_read_config()[VOLUMES] == {'/foo': '/bar', '/foobar': '/baz'}
+
+    update_dog_config(tmp_path, {VOLUMES: {'$home/.ssh:ro': '~/.ssh'}})
+    assert call_read_config()[VOLUMES] == {
+        '/foo': '/bar',
+        '/foobar': '/baz',
+        str(home_temp_dir / '.ssh:ro'): str(home_temp_dir / '.ssh'),
+    }
+
+
+def test_volumes_v2(
+    call_read_config, basic_dog_config_with_image, tmp_path, home_temp_dir
+):
+    update_dog_config(
+        tmp_path, {DOG: {AUTO_MOUNT: False, 'dog-config-file-version': '2'}}
+    )
+    assert call_read_config()[VOLUMES] == {}
+
+    update_dog_config(tmp_path, {VOLUMES: {'vol1': '/bar:/foo'}})
+    assert call_read_config()[VOLUMES] == {'/foo': '/bar'}
+
+    update_dog_config(tmp_path, {VOLUMES: {'vol1': '/bar:/Foo'}})
+    assert call_read_config()[VOLUMES] == {'/Foo': '/bar'}
+
+    update_dog_config(tmp_path, {VOLUMES: {'vol1': '/bar:/FOO'}})
+    assert call_read_config()[VOLUMES] == {'/FOO': '/bar'}
+
+    update_dog_config(
+        tmp_path, {VOLUMES: {'vol1': '/bar:/FOO', 'vol2': '/baz:/foobar'}}
+    )
+    assert call_read_config()[VOLUMES] == {'/FOO': '/bar', '/foobar': '/baz'}
+
+    update_dog_config(tmp_path, {VOLUMES: {'vol3': '~/.ssh:$home/.ssh:ro'}})
+    assert call_read_config()[VOLUMES] == {
+        '/FOO': '/bar',
+        '/foobar': '/baz',
+        str(home_temp_dir / '.ssh:ro'): str(home_temp_dir / '.ssh'),
+    }
+
+
+def test_volumes_v2_using_v1_format(
+    call_read_config, basic_dog_config_with_image, tmp_path, capsys
+):
+    update_dog_config(
+        tmp_path, {DOG: {AUTO_MOUNT: False, 'dog-config-file-version': '2'}}
+    )
+
+    update_dog_config(tmp_path, {VOLUMES: {'/foo': '/bar'}})
+    with pytest.raises(SystemExit):
+        call_read_config()
+    captured = capsys.readouterr()
+    assert '"/foo=/bar" found in volumes' in captured.err

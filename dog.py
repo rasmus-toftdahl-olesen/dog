@@ -209,11 +209,7 @@ def parse_volumes_v2(volumes):
 volumes_parser = [lambda x: x, parse_volumes_v2]
 
 
-def read_dog_config(dog_config_file: Path) -> DogConfig:
-    config = configparser.ConfigParser(delimiters='=')
-    config.read(str(dog_config_file))
-    dog_config = dict(config[DOG])
-
+def get_config_file_version(dog_config):
     dog_config_file_version = dog_config.get(DOG_CONFIG_FILE_VERSION, None)
     if dog_config_file_version is None:
         fatal_error(
@@ -222,13 +218,22 @@ def read_dog_config(dog_config_file: Path) -> DogConfig:
             )
         )
     dog_config_file_version = int(dog_config_file_version)
-    if dog_config_file_version > MAX_DOG_CONFIG_VERSION:
+    if dog_config_file_version < 1 or dog_config_file_version > MAX_DOG_CONFIG_VERSION:
         fatal_error(
             (
                 'Do not know how to interpret a dog.config file with version {}'
                 ' (max file version supported: {})'
             ).format(dog_config_file_version, MAX_DOG_CONFIG_VERSION)
         )
+    return dog_config_file_version
+
+
+def read_dog_config(dog_config_file: Path) -> DogConfig:
+    config = configparser.ConfigParser(delimiters='=')
+    config.read(str(dog_config_file))
+    dog_config = dict(config[DOG])
+
+    dog_config_file_version = get_config_file_version(dog_config)
 
     # Parse booleans - use DEFAULT_CONFIG to determine which values should be booleans
     for k, v in DEFAULT_CONFIG.items():

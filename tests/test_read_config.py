@@ -10,12 +10,15 @@ from dog import (
     CONFIG_FILE,
     CWD,
     DOG,
+    DOG_CONFIG_FILE_VERSION,
     EXPOSED_DOG_VARIABLES,
     GID,
     GROUP,
     HOME,
     HOSTNAME,
     INTERACTIVE,
+    MAX_DOG_CONFIG_VERSION,
+    MINIMUM_VERSION,
     PORTS,
     PULL,
     SANITY_CHECK_ALWAYS,
@@ -209,6 +212,44 @@ def test_volumes_v2_using_v1_format(
         call_read_config()
     captured = capsys.readouterr()
     assert '"/foo=/bar" found in volumes' in captured.err
+
+
+def test_dog_is_too_old_for_minimum_version(
+    call_read_config, basic_dog_config_with_image, tmp_path, capsys
+):
+    update_dog_config(tmp_path, {DOG: {MINIMUM_VERSION: ACTUAL_DOG_VERSION + 5}})
+    with pytest.raises(SystemExit):
+        call_read_config()
+    captured = capsys.readouterr()
+    expected_error = (
+        f'Minimum version required ({ACTUAL_DOG_VERSION + 5}) is greater than your'
+        f' dog version ({ACTUAL_DOG_VERSION}) - please upgrade dog'
+    )
+    assert expected_error in captured.err
+
+
+@pytest.mark.parametrize('file_version', [-1, MAX_DOG_CONFIG_VERSION + 1])
+def test_dog_config_file_version_is_unknown(
+    call_read_config, basic_dog_config_with_image, tmp_path, capsys, file_version: int
+):
+    update_dog_config(tmp_path, {DOG: {DOG_CONFIG_FILE_VERSION: file_version}})
+    with pytest.raises(SystemExit):
+        call_read_config()
+    captured = capsys.readouterr()
+    expected_error = (
+        'Do not know how to interpret a dog.config file with version'
+        f' {file_version}'
+        f' (max file version supported: {MAX_DOG_CONFIG_VERSION})'
+    )
+    assert expected_error in captured.err
+
+
+@pytest.mark.parametrize('minimum_version', range(1, ACTUAL_DOG_VERSION))
+def test_dog_is_minimum_version_or_newer(
+    call_read_config, basic_dog_config_with_image, tmp_path, minimum_version: int
+):
+    update_dog_config(tmp_path, {DOG: {MINIMUM_VERSION: minimum_version}})
+    call_read_config()
 
 
 def test_usb_devices(

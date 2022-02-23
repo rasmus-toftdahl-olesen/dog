@@ -20,6 +20,7 @@ from dog import (
     DogConfig,
     win32_to_dog_unix,
     find_mount_point,
+    DEVICE,
     DOG,
     USE_PODMAN,
     IMAGE,
@@ -456,11 +457,13 @@ def test_perforce_win32(
 
 
 @pytest.mark.parametrize(
-    'usb_devices,expected_device',
+    'device,usb_devices,expected_device_param',
     [
-        ({}, ''),
-        ({'dev1': '1111:aaaa'}, '/dev/bus/usb/001/004'),
-        ({'dev1': '1111:aaaa'}, '/dev/bus/usb/001/004:/dev/bus/usb/002/013'),
+        ('', {}, ''),
+        ('/dev/foo_bar', {}, '/dev/foo_bar'),
+        ('', {'dev1': '1111:aaaa'}, '/dev/bus/usb/001/004'),
+        ('', {'dev1': '1111:aaaa'}, '/dev/bus/usb/001/004:/dev/bus/usb/002/013'),
+        ('/dev/baz', {'dev1': '1111:aaaa'}, '/dev/baz:/dev/bus/usb/001/004'),
     ],
 )
 def test_device(
@@ -470,16 +473,23 @@ def test_device(
     mock_subprocess,
     home_temp_dir,
     monkeypatch,
+    device: str,
     usb_devices: dict,
-    expected_device: str,
+    expected_device_param: str,
 ):
     def test_path(x):
         assert x == usb_devices['dev1']
-        return expected_device.split(':')
+        if device:
+            usb_dev_paths = expected_device_param[len(device) + 1 :]
+        else:
+            usb_dev_paths = expected_device_param
+        return usb_dev_paths.split(':')
 
     monkeypatch.setattr(UsbDevices, 'get_bus_paths', lambda _, x: test_path(x))
 
     update_dog_config(tmp_path, {USB_DEVICES: usb_devices})
+    if device:
+        update_dog_config(tmp_path, {DOG: {DEVICE: device}})
     call_main('echo', 'foo')
     args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
     args_left = assert_docker_image_and_cmd_inside_docker(
@@ -490,5 +500,5 @@ def test_device(
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
-    args_left = assert_device_param(args_left, expected_device)
+    args_left = assert_device_param(args_left, expected_device_param)
     assert args_left == []

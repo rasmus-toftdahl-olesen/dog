@@ -22,6 +22,7 @@ AS_ROOT = 'as-root'
 AUTO_MOUNT = 'auto-mount'
 CONFIG_FILE = 'dog.config'
 CWD = 'cwd'
+DEVICE = 'device'
 DOCKER = 'docker'
 DOCKER_COMPOSE = 'docker-compose'
 DOCKER_COMPOSE_FILE = 'docker-compose-file'
@@ -467,8 +468,8 @@ def docker_run(config: DogConfig) -> int:
     if config[TERMINAL]:
         args.append('-t')
 
-    if config[USB_DEVICES]:
-        args.append('--device={}'.format(':'.join(config[USB_DEVICES])))
+    if DEVICE in config:
+        args.append('--device={}'.format(config[DEVICE]))
 
     env_args = generate_env_arg_list(config)
     args.extend(env_args)
@@ -593,7 +594,12 @@ def update_dependencies_in_config(config: DogConfig):
             dev_path = system_usb_devices.get_bus_paths(vendor_product)
             if dev_path:
                 usb_device_paths.extend(dev_path)
-        config[USB_DEVICES] = usb_device_paths
+        if usb_device_paths:
+            device = ':'.join(usb_device_paths)
+            if DEVICE in config:
+                config[DEVICE] = config[DEVICE] + ':' + device
+            else:
+                config[DEVICE] = device
 
     home_path = str(Path.home())
     volumes = {}

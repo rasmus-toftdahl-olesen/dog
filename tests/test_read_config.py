@@ -9,6 +9,7 @@ from dog import (
     AUTO_MOUNT,
     CONFIG_FILE,
     CWD,
+    DEVICE,
     DOG,
     DOG_CONFIG_FILE_VERSION,
     EXPOSED_DOG_VARIABLES,
@@ -255,7 +256,8 @@ def test_dog_is_minimum_version_or_newer(
 def test_usb_devices(
     call_read_config, basic_dog_config_with_image, tmp_path, monkeypatch
 ):
-    assert call_read_config()[USB_DEVICES] == []
+    assert call_read_config()[USB_DEVICES] == {}
+    assert DEVICE not in call_read_config()
 
     dev1 = '1111:aaaa'
     dev2 = '2222:aaaa'
@@ -276,12 +278,20 @@ def test_usb_devices(
     monkeypatch.setattr(UsbDevices, 'get_bus_paths', lambda _, x: test_path(x))
 
     update_dog_config(tmp_path, {USB_DEVICES: {'dev1': dev1}})
-    assert call_read_config()[USB_DEVICES] == usb_dev_path1
+    assert call_read_config()[DEVICE] == usb_dev_path1[0]
 
     update_dog_config(tmp_path, {USB_DEVICES: {'dev2': dev2}})
-    assert call_read_config()[USB_DEVICES] == usb_dev_path1 + usb_dev_path2
+    assert call_read_config()[DEVICE] == f'{usb_dev_path1[0]}:{usb_dev_path2[0]}'
 
     update_dog_config(tmp_path, {USB_DEVICES: {'dev3': dev3}})
     assert (
-        call_read_config()[USB_DEVICES] == usb_dev_path1 + usb_dev_path2 + usb_dev_path3
+        call_read_config()[DEVICE]
+        == f'{usb_dev_path1[0]}:{usb_dev_path2[0]}:{":".join(usb_dev_path3)}'
+    )
+
+    my_dev = '/dev/my_strange_dev'
+    update_dog_config(tmp_path, {DOG: {DEVICE: my_dev}})
+    assert (
+        call_read_config()[DEVICE]
+        == f'{my_dev}:{usb_dev_path1[0]}:{usb_dev_path2[0]}:{":".join(usb_dev_path3)}'
     )

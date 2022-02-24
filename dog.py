@@ -211,6 +211,15 @@ volumes_parser = [lambda x: x, parse_volumes_v2]
 
 
 def get_config_file_version(dog_config):
+    if MINIMUM_VERSION in dog_config:
+        minimum_version = int(dog_config[MINIMUM_VERSION])
+        if DOG_VERSION < minimum_version:
+            fatal_error(
+                (
+                    'Minimum version required ({}) is greater than your dog version'
+                    ' ({}) - please upgrade dog'
+                ).format(minimum_version, DOG_VERSION)
+            )
     dog_config_file_version = dog_config.get(DOG_CONFIG_FILE_VERSION, None)
     if dog_config_file_version is None:
         fatal_error(
@@ -229,22 +238,21 @@ def get_config_file_version(dog_config):
     return dog_config_file_version
 
 
-def read_dog_config(dog_config_file: Path) -> DogConfig:
-    config = configparser.ConfigParser(delimiters='=')
-    config.read(str(dog_config_file))
-    dog_config = dict(config[DOG])
+def set_dog_config_path(dog_config, dog_config_file):
+    if dog_config.get(DOG_CONFIG_PATH_RESOLVE_SYMLINK, False):
+        dog_config[DOG_CONFIG_PATH] = str(dog_config_file.resolve().parent)
+    else:
+        dog_config[DOG_CONFIG_PATH] = str(dog_config_file.parent)
 
-    dog_config_file_version = get_config_file_version(dog_config)
 
-    # Parse booleans - use DEFAULT_CONFIG to determine which values should be booleans
+def handle_booleans_in_config(config, dog_config):
+    """Use DEFAULT_CONFIG to determine which values should be booleans."""
     for k, v in DEFAULT_CONFIG.items():
         if isinstance(v, bool) and k in config[DOG]:
             dog_config[k] = config[DOG].getboolean(k)
 
-    if EXPOSED_DOG_VARIABLES in dog_config:
-        dog_config[EXPOSED_DOG_VARIABLES] = list_from_config_entry(
-            dog_config[EXPOSED_DOG_VARIABLES]
-        )
+
+def handle_user_env_vars(dog_config):
     if USER_ENV_VARS in dog_config:
         dog_config[USER_ENV_VARS] = get_user_env_vars(
             dog_config[USER_ENV_VARS], allow_empty=False
@@ -253,18 +261,34 @@ def read_dog_config(dog_config_file: Path) -> DogConfig:
         dog_config[USER_ENV_VARS_IF_SET] = get_user_env_vars(
             dog_config[USER_ENV_VARS_IF_SET], allow_empty=True
         )
-    if PORTS in config:
-        dog_config[PORTS] = dict(config[PORTS])
-    if USB_DEVICES in config:
-        dog_config[USB_DEVICES] = dict(config[USB_DEVICES])
+
+
+def handle_dict_config_vars(config, dog_config):
+    for v in [PORTS, USB_DEVICES]:
+        if v in config:
+            dog_config[v] = dict(config[v])
+
+
+def read_dog_config(dog_config_file: Path) -> DogConfig:
+    config = configparser.ConfigParser(delimiters='=')
+    config.read(str(dog_config_file))
+    dog_config = dict(config[DOG])
+
+    dog_config_file_version = get_config_file_version(dog_config)
+
+    handle_booleans_in_config(config, dog_config)
+    handle_user_env_vars(dog_config)
+    handle_dict_config_vars(config, dog_config)
+
+    if EXPOSED_DOG_VARIABLES in dog_config:
+        dog_config[EXPOSED_DOG_VARIABLES] = list_from_config_entry(
+            dog_config[EXPOSED_DOG_VARIABLES]
+        )
     if VOLUMES in config:
         dog_config[VOLUMES] = volumes_parser[dog_config_file_version - 1](
             dict(config[VOLUMES])
         )
-    if dog_config.get(DOG_CONFIG_PATH_RESOLVE_SYMLINK, False):
-        dog_config[DOG_CONFIG_PATH] = str(dog_config_file.resolve().parent)
-    else:
-        dog_config[DOG_CONFIG_PATH] = str(dog_config_file.parent)
+    set_dog_config_path(dog_config, dog_config_file)
     return dog_config
 
 
@@ -546,26 +570,18 @@ def update_config(existing_config: DogConfig, new_config: DogConfig):
             existing_config[k] = copy.copy(new_config[k])
 
 
-def update_dependencies_in_config(config: DogConfig):
-    """Update values in config depending on other values in config."""
-    if MINIMUM_VERSION in config:
-        minimum_version = int(config[MINIMUM_VERSION])
-        if DOG_VERSION < minimum_version:
-            fatal_error(
-                (
-                    'Minimum version required ({}) is greater than your dog version'
-                    ' ({}) - please upgrade dog'
-                ).format(minimum_version, DOG_VERSION)
-            )
+def handle_auto_mount(config):
+    if not config[AUTO_MOUNT]:
+        return
+    if sys.platform == 'win32':
+        drive = config[WIN32_CWD].drive
+        config[VOLUMES]['/' + drive[0]] = drive + '\\'
+    else:
+        mount_point = str(find_mount_point(config[CWD]))
+        config[VOLUMES][mount_point] = mount_point
 
-    if config[AUTO_MOUNT]:
-        if sys.platform == 'win32':
-            drive = config[WIN32_CWD].drive
-            config[VOLUMES]['/' + drive[0]] = drive + '\\'
-        else:
-            mount_point = str(find_mount_point(config[CWD]))
-            config[VOLUMES][mount_point] = mount_point
 
+def handle_full_image(config):
     if DOCKER_COMPOSE_FILE in config:
         if FULL_IMAGE in config or IMAGE in config:
             fatal_error(
@@ -587,6 +603,8 @@ def update_dependencies_in_config(config: DogConfig):
         else:
             config[FULL_IMAGE] = config[IMAGE]
 
+
+def handle_usb_devices(config):
     if USB_DEVICES in config:
         usb_device_paths = []
         system_usb_devices = UsbDevices()
@@ -601,6 +619,8 @@ def update_dependencies_in_config(config: DogConfig):
             else:
                 config[DEVICE] = device
 
+
+def handle_volumes(config):
     home_path = str(Path.home())
     volumes = {}
     for inside, outside in config[VOLUMES].items():
@@ -619,6 +639,14 @@ def update_dependencies_in_config(config: DogConfig):
         if not only_if_outside_exists or os.path.exists(new_outside):
             volumes[new_inside] = new_outside
     config[VOLUMES] = volumes
+
+
+def update_dependencies_in_config(config: DogConfig):
+    """Update values in config depending on other values in config."""
+    handle_auto_mount(config)
+    handle_full_image(config)
+    handle_usb_devices(config)
+    handle_volumes(config)
 
 
 def get_minimum_version_from_config(version_var: str, config: DogConfig) -> str:

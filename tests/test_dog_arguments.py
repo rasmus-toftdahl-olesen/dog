@@ -56,22 +56,23 @@ def test_as_root(call_centos7, capfd):
 
 
 def test_pull_as_echo_argument(call_centos7, capstrip):
-    # --pull should only be interpreted as a dog argument if it comes before the first
-    # argument
+    """Test that --pull should only be interpreted as a dog argument if it comes
+    before the first argument.
+    """
     call_centos7('echo', '-n', '--pull')
     captured = capstrip.get()
     assert captured == ('--pull', '')
 
 
 def test_version(call_dog, capfd):
-    # --version should just return the current dog version
+    """Test that --version should just return the current dog version."""
     call_dog('--version')
     captured = capfd.readouterr()
     assert re.match('dog version [0-9]+', captured.out)
 
 
 def test_verbose(call_centos7, capfd):
-    # --verbose should report the actual setup
+    """Test that --verbose should report the actual setup."""
     call_centos7('--verbose', 'id')
     captured = capfd.readouterr()
     assert 'Dog Config' in captured.out
@@ -79,31 +80,36 @@ def test_verbose(call_centos7, capfd):
 
 
 def test_stdin_testing_works(call_shell, capstrip):
-    # Just verifying that my stdin testing works before testing it with dog.
+    """ Sanity check stdin capture before it's used to test dog."""
     call_shell('echo hello world | cat -')
     captured = capstrip.get()
     assert captured == ('hello world', '')
 
 
 def test_stdin(call_shell, capstrip, dog_env):
-    """stdin should be available from inside dog."""
+    """Test that stdin should be available from inside dog."""
     call_shell(f'echo hello world | {dog_env} cat')
     captured = capstrip.get()
     assert captured == ('hello world', '')
 
 
 def test_auto_mount_works(call_centos7, capstrip):
-    # auto-mount is on by default, and should therefore show the files in the current
-    # directory.
+    """Test auto-mounting
 
+    auto-mount is on by default, and ls should therefore show the files in the current
+    directory.
+    """
     call_centos7('ls')
     captured = capstrip.get()
     assert captured == ('dog.config', '')
 
 
 def test_disabled_auto_mount(call_centos7, capstrip, tmp_path):
-    # disable auto-mount and make sure that we do not see the files in the
-    # current directory.
+    """Test disabling auto-mount
+
+    Disable auto-mount and make sure that we do not see the files in the current
+    directory (ls should not show any files).
+    """
     append_to_dog_config(tmp_path, ['auto-mount=False'])
     call_centos7('ls')
     captured = capstrip.get()
@@ -111,7 +117,7 @@ def test_disabled_auto_mount(call_centos7, capstrip, tmp_path):
 
 
 def test_volumes(call_centos7, capstrip, tmp_path, system_temp_dir):
-    # Try adding the "system temp dir" as a volume in the dog.config.
+    """Test of adding the the 'system temp dir' as a volume in the dog.config."""
     append_to_dog_config(
         tmp_path, ['[volumes]', f'/dog_test_of_system_temp={system_temp_dir}']
     )
@@ -126,10 +132,11 @@ def test_no_image_given(call_dog, basic_dog_config, tmp_path, capfd):
 
 
 def test_dog_config_not_found(my_dog, system_temp_dir, capfd):
-    # If a dog.config is found, report an error.
-    # We run this test in the system_temp_dir to be more sure that no-one has a
-    # dog.config file somewhere in the parent directories.
+    """Verify that an error is reported if dog.config is not found
 
+    We run this test in the system_temp_dir to be more sure that no-one has a
+    dog.config file somewhere in the parent directories.
+    """
     for parent in Path(system_temp_dir).parents:
         assert not (parent / 'dog.config').exists(), (
             'Pre-conditions for this test failed - we expect no dog.config',
@@ -146,9 +153,11 @@ def test_dog_config_not_found(my_dog, system_temp_dir, capfd):
     reason='This test only works inside Demant (sorry!)',
 )
 def test_pull_latest_demant_debian(basic_dog_config, call_dog, tmp_path, capstrip):
-    # This test only exists to pull the latest image before the next test
-    # - this is to make sure that the test does not fail due to lots of
-    # pullling layer ....blah.balh... output.
+    """Dummy test used to pull the latest image before the next test
+
+    - this is to make sure that the test does not fail due to lots of
+    pullling layer ....blah.balh... output.
+    """
     append_to_dog_config(
         tmp_path,
         [
@@ -182,6 +191,8 @@ def test_bad_registry(call_centos7, tmp_path, capfd):
 
 
 def test_user_env_vars(call_centos7, tmp_path, capfd, monkeypatch):
+    """Test user-env-vars config param."""
+
     # First call without the local variable
     monkeypatch.delenv('MY_ENV_VAR', raising=False)
     call_centos7('echo', 'MY_ENV_VAR is $MY_ENV_VAR')

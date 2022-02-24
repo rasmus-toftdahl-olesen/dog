@@ -17,15 +17,18 @@ from conftest import (
     ACTUAL_DOG_VERSION,
 )
 from dog import (
-    DogConfig,
-    win32_to_dog_unix,
-    find_mount_point,
     DEVICE,
     DOG,
-    USE_PODMAN,
+    DOG_CONFIG_FILE_VERSION,
+    DogConfig,
     IMAGE,
     USB_DEVICES,
+    USE_PODMAN,
     UsbDevices,
+    VOLUMES,
+    VOLUMES_FROM,
+    find_mount_point,
+    win32_to_dog_unix,
 )
 
 
@@ -33,7 +36,7 @@ class MockSubprocess:
     def __init__(self):
         self.run_args = None
 
-    def mock_run(self, *args, **kwargs):
+    def mock_run(self, *args):
         self.run_args = args[0]
         return subprocess.CompletedProcess(args=args, returncode=0)
 
@@ -99,7 +102,7 @@ def split_single_cmdline_param(
                 param_list.append(next(i))
     except StopIteration:
         pass
-    return (param_list, args_left)
+    return param_list, args_left
 
 
 def flatten(container: Iterable) -> List:
@@ -152,11 +155,26 @@ def assert_volume_params(
     vol_mapping_values = [
         '{}:{}'.format(vm[1], vm[0]) for vm in expected_volume_mappings
     ]
+    num_expected_volume_mappings = len(expected_volume_mappings)
     expected_volume_params = flatten(
-        zip(['-v'] * len(expected_volume_mappings), vol_mapping_values)
+        zip(['-v'] * num_expected_volume_mappings, vol_mapping_values)
     )
-    assert expected_volume_params == volume_params
-    return args_left
+    params = volume_params[: num_expected_volume_mappings * 2]
+    rest_params = volume_params[num_expected_volume_mappings * 2 :]
+    assert params == expected_volume_params
+    return args_left + rest_params
+
+
+def assert_volumes_from_params(run_args: List[str], expected) -> List[str]:
+    volumes_from_params, args_left = split_single_cmdline_param(
+        '--volumes-from', run_args, include_value=True
+    )
+    num_expected = len(expected)
+    expected_volumes_from = flatten(zip(['--volumes-from'] * num_expected, expected))
+    params = volumes_from_params[: num_expected * 2]
+    rest_params = volumes_from_params[num_expected * 2 :]
+    assert params == expected_volumes_from
+    return args_left + rest_params
 
 
 def assert_device_param(run_args: List[str], expected_device: str) -> List[str]:
@@ -324,7 +342,7 @@ def test_sudo_outside(
     tmp_path,
     mock_subprocess,
     home_temp_dir,
-    test_sudo: List[Tuple[str, bool]],
+    test_sudo: Tuple[str, bool],
 ):
     append_to_dog_config(tmp_path, ['image=my_image', test_sudo[0]])
     call_main('my_inside_cmd')
@@ -501,4 +519,78 @@ def test_device(
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     args_left = assert_device_param(args_left, expected_device_param)
+    assert args_left == []
+
+
+@pytest.mark.parametrize(
+    'volumes',
+    [
+        {'vol1': '/foo/bar:/foo/bar'},
+        {'vol1': '/foo/bar:/foo/bar', 'ro_vol': '/my_path:/my_other_path:ro'},
+    ],
+)
+def test_volumes(
+    basic_dog_config_with_image,
+    call_main,
+    tmp_path,
+    mock_subprocess,
+    home_temp_dir,
+    volumes: dict,
+):
+    expected_volumes = []
+    for vol in volumes.values():
+        s = vol.split(':')
+        inside = s[1] if len(s) < 3 else f'{s[1]}:{s[2]}'
+        outside = s[0]
+        expected_volumes.append((inside, outside))
+    update_dog_config(tmp_path, {DOG: {DOG_CONFIG_FILE_VERSION: 2}, VOLUMES: volumes})
+    call_main('echo', 'foo')
+    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_image_and_cmd_inside_docker(
+        args_left, 'debian:latest', ['echo', 'foo']
+    )
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
+    args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_interactive(args_left)
+    args_left = std_assert_env_params(home_temp_dir, args_left)
+    args_left = assert_volume_params(args_left, expected_volumes)
+    args_left = std_assert_volume_params(tmp_path, args_left)
+    assert args_left == []
+
+
+@pytest.mark.parametrize(
+    'volumes_from',
+    [
+        {},
+        {'container1': 'debian:latest'},
+        {
+            'container1': 'my.example.com/my-custom-dockers/my_tool:latest',
+            'cont2': 'alpine:latest',
+        },
+        {
+            'container1': 'my.example.com/my-custom-dockers/my_tool:latest',
+            'cont2:ro': 'alpine:latest',
+        },
+    ],
+)
+def test_volumes_from(
+    basic_dog_config_with_image,
+    call_main,
+    tmp_path,
+    mock_subprocess,
+    home_temp_dir,
+    volumes_from: dict,
+):
+    update_dog_config(tmp_path, {VOLUMES_FROM: volumes_from})
+    call_main('echo', 'foo')
+    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_image_and_cmd_inside_docker(
+        args_left, 'debian:latest', ['echo', 'foo']
+    )
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
+    args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_interactive(args_left)
+    args_left = std_assert_env_params(home_temp_dir, args_left)
+    args_left = std_assert_volume_params(tmp_path, args_left)
+    args_left = assert_volumes_from_params(args_left, volumes_from.keys())
     assert args_left == []

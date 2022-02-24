@@ -2,5 +2,5 @@
 # (ax)black uses line length of 88
 
 [flake8]
-ignore = E203
+ignore = E203, W503
 max-line-length = 88

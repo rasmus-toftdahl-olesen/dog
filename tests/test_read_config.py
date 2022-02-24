@@ -30,11 +30,12 @@ from dog import (
     USER,
     USER_ENV_VARS,
     USER_ENV_VARS_IF_SET,
+    UsbDevices,
     VERBOSE,
     VERSION,
     VOLUMES,
+    VOLUMES_FROM,
     read_config,
-    UsbDevices,
 )
 
 
@@ -294,4 +295,59 @@ def test_usb_devices(
     assert (
         call_read_config()[DEVICE]
         == f'{my_dev}:{usb_dev_path1[0]}:{usb_dev_path2[0]}:{":".join(usb_dev_path3)}'
+    )
+
+
+def test_volumes_from(call_read_config, basic_dog_config_with_image, tmp_path):
+    assert call_read_config()[VOLUMES_FROM] == {}
+
+    update_dog_config(tmp_path, {VOLUMES_FROM: {'vol1': 'my_tool'}})
+    assert call_read_config()[VOLUMES_FROM] == {'vol1': 'my_tool'}
+
+    update_dog_config(tmp_path, {VOLUMES_FROM: {'vol2': 'path/to/other_tool'}})
+    assert call_read_config()[VOLUMES_FROM] == {
+        'vol1': 'my_tool',
+        'vol2': 'path/to/other_tool',
+    }
+
+
+def test_volumes_from_with_registry_subst(
+    call_read_config, basic_dog_config_with_image, tmp_path
+):
+    assert call_read_config()[VOLUMES_FROM] == {}
+
+    update_dog_config(
+        tmp_path,
+        {
+            DOG: {'registry': 'gitlab.ci.demant.com:4567/dockers'},
+            VOLUMES_FROM: {'vol1': '$registry/my_tool:latest'},
+        },
+    )
+    assert call_read_config()[VOLUMES_FROM] == {
+        'vol1': 'gitlab.ci.demant.com:4567/dockers/my_tool:latest'
+    }
+
+    update_dog_config(
+        tmp_path,
+        {
+            DOG: {'custom_registry': 'my.example.com/my-custom-dockers'},
+            VOLUMES_FROM: {'vol1': '$custom_registry/my_tool:latest'},
+        },
+    )
+    assert call_read_config()[VOLUMES_FROM] == {
+        'vol1': 'my.example.com/my-custom-dockers/my_tool:latest'
+    }
+
+
+def test_volumes_from_with_failing_registry_subst(
+    call_read_config, basic_dog_config_with_image, tmp_path, capsys
+):
+    update_dog_config(tmp_path, {VOLUMES_FROM: {'vol1': '$registry/my_tool:latest'}})
+
+    with pytest.raises(SystemExit):
+        call_read_config()
+    captured = capsys.readouterr()
+    assert (
+        '"registry" used in "$registry/my_tool:latest" not found in config'
+        in captured.err
     )

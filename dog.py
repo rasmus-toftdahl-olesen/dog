@@ -60,6 +60,7 @@ USE_PODMAN = 'use-podman'
 VERBOSE = 'verbose'
 VERSION = 'version'
 VOLUMES = 'volumes'
+VOLUMES_FROM = 'volumes-from'
 WIN32_CWD = 'win32-cwd'
 
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
@@ -90,6 +91,7 @@ DEFAULT_CONFIG = {
     VERBOSE: False,
     VERSION: DOG_VERSION,
     VOLUMES: {},
+    VOLUMES_FROM: {},
 }
 
 
@@ -263,8 +265,8 @@ def handle_user_env_vars(dog_config):
         )
 
 
-def handle_dict_config_vars(config, dog_config):
-    for v in [PORTS, USB_DEVICES]:
+def handle_dict_config_vars(config: configparser.ConfigParser, dog_config):
+    for v in [PORTS, USB_DEVICES, VOLUMES_FROM]:
         if v in config:
             dog_config[v] = dict(config[v])
 
@@ -368,7 +370,7 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
         help='Perform sanity check, i.e. is required docker-compose version available',
     )
 
-    # Insert the needed -- to seperate dog args with the rest of the commands
+    # Insert the needed -- to separate dog args with the rest of the commands
     # But only if the user did not do it himself
     if DOG not in own_name:
         argv.insert(0, own_name)
@@ -393,7 +395,7 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
 
 
 def win32_to_dog_unix(win_path: Path) -> str:
-    """Convert a windows path to what it will be inside dog (unix)."""
+    """Convert a Windows path to what it will be inside dog (unix)."""
     return '/' + win_path.as_posix().replace(':', '')
 
 
@@ -486,6 +488,9 @@ def docker_run(config: DogConfig) -> int:
     for inside, outside in config[PORTS].items():
         args += ['-p', outside + ':' + inside]
 
+    for container in config[VOLUMES_FROM].keys():
+        args += ['--volumes-from', container]
+
     if config[INTERACTIVE]:
         args.append('-i')
 
@@ -560,7 +565,7 @@ def docker_compose_run(config: DogConfig) -> int:
 def update_config(existing_config: DogConfig, new_config: DogConfig):
     """Merge two DogConfigs.
 
-    All exiting keys in exising_config will be replaced with the keys in new_config
+    All exiting keys in existing_config will be replaced with the keys in new_config
     - except for dictionaries, they will be merged with the existing dictionary.
     """
     for k, v in new_config.items():
@@ -641,12 +646,27 @@ def handle_volumes(config):
     config[VOLUMES] = volumes
 
 
+def handle_volumes_from(config):
+    if VOLUMES_FROM not in config:
+        return
+    registry_var_re = re.compile(r'^\$(\w+)(/.*)')
+    for key, vol in config[VOLUMES_FROM].items():
+        m = registry_var_re.match(vol)
+        if not m:
+            continue
+        try:
+            config[VOLUMES_FROM][key] = config[m[1]] + m[2]
+        except KeyError:
+            fatal_error('"{}" used in "{}" not found in config'.format(m[1], m[0]))
+
+
 def update_dependencies_in_config(config: DogConfig):
     """Update values in config depending on other values in config."""
     handle_auto_mount(config)
     handle_full_image(config)
     handle_usb_devices(config)
     handle_volumes(config)
+    handle_volumes_from(config)
 
 
 def get_minimum_version_from_config(version_var: str, config: DogConfig) -> str:

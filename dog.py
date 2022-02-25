@@ -20,6 +20,7 @@ MAX_DOG_CONFIG_VERSION = 2
 ARGS = 'args'
 AS_ROOT = 'as-root'
 AUTO_MOUNT = 'auto-mount'
+AUTO_RUN_VOLUMES_FROM = 'auto-run-volumes-from'
 CONFIG_FILE = 'dog.config'
 CWD = 'cwd'
 DEVICE = 'device'
@@ -71,6 +72,7 @@ DEFAULT_CONFIG = {
     ARGS: ['id'],
     AS_ROOT: False,
     AUTO_MOUNT: True,
+    AUTO_RUN_VOLUMES_FROM: True,
     CWD: '/home/nobody',
     EXPOSED_DOG_VARIABLES: [UID, GID, USER, GROUP, HOME, AS_ROOT, VERSION],
     GID: 1000,
@@ -471,6 +473,40 @@ def generate_env_arg_list(config: DogConfig) -> List[str]:
     return args
 
 
+def docker_run_volumes_from(config: DogConfig):
+    cmd = docker_cmd(config)
+
+    import asyncio
+
+    async def run_volume_installer(name, image):
+
+        proc = await asyncio.create_subprocess_exec(
+            cmd,
+            'run',
+            '--network',
+            'none',
+            '--name',
+            name,
+            image,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        return await proc.wait()
+
+    loop = asyncio.get_event_loop()
+    tasks = [
+        run_volume_installer(name, image)
+        for name, image in config[VOLUMES_FROM].items()
+    ]
+    exit_codes = loop.run_until_complete(asyncio.gather(*tasks))
+    for name, ec in zip(config[VOLUMES_FROM].keys(), exit_codes):
+        if not (ec == 0 or ec == 125):
+            fatal_error(
+                'Unexpected returncode: {} from run of volumes_from "{}"'.format(
+                    ec, name
+                )
+            )
+
+
 def docker_run(config: DogConfig) -> int:
     args = []
     if config[SUDO_OUTSIDE_DOCKER]:
@@ -756,6 +792,9 @@ def main(argv) -> int:
 
     if DOCKER_COMPOSE_FILE in config:
         return docker_compose_run(config)
+
+    if config[VOLUMES_FROM] and config[AUTO_RUN_VOLUMES_FROM]:
+        docker_run_volumes_from(config)
 
     return docker_run(config)
 

@@ -22,6 +22,7 @@ from dog import (
     DOG_CONFIG_FILE_VERSION,
     DogConfig,
     IMAGE,
+    NETWORK,
     USB_DEVICES,
     USE_PODMAN,
     UsbDevices,
@@ -146,6 +147,14 @@ def assert_hostname_param(run_args: List[str], expected_hostname: str) -> List[s
     return args_left
 
 
+def assert_network_param(run_args: List[str], expected_network: str) -> List[str]:
+    network_params, args_left = split_single_cmdline_param(
+        '--network', run_args, include_value=True
+    )
+    assert network_params == ['--network', expected_network]
+    return args_left
+
+
 def assert_volume_params(
     run_args: List[str], expected_volume_mappings: List[Tuple[str, str]]
 ) -> List[str]:
@@ -207,6 +216,10 @@ def std_assert_hostname_param(args_left):
     return assert_hostname_param(args_left, 'mocked_hostname')
 
 
+def std_assert_network_param(args_left):
+    return assert_network_param(args_left, 'host')
+
+
 def std_assert_volume_params(tmp_path, args_left):
     if is_windows():
         return assert_volume_params(args_left, [('/C', 'C:\\')])
@@ -255,6 +268,30 @@ def get_workdir(pth: Path) -> str:
         return str(pth)
 
 
+@pytest.mark.parametrize('network', ['none', 'host', 'mynetwork'])
+def test_network(
+    basic_dog_config_with_image,
+    call_main,
+    tmp_path,
+    mock_subprocess,
+    home_temp_dir,
+    network: str,
+):
+    update_dog_config(tmp_path, {DOG: {NETWORK: network}})
+    call_main('echo', 'foo')
+    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_image_and_cmd_inside_docker(
+        args_left, 'debian:latest', ['echo', 'foo']
+    )
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
+    args_left = std_assert_hostname_param(args_left)
+    args_left = assert_network_param(args_left, network)
+    args_left = std_assert_volume_params(tmp_path, args_left)
+    args_left = std_assert_interactive(args_left)
+    args_left = std_assert_env_params(home_temp_dir, args_left)
+    assert args_left == []
+
+
 @pytest.mark.parametrize('use_podman', [False, True])
 def test_simple_docker_cmdline(
     basic_dog_config,
@@ -276,6 +313,7 @@ def test_simple_docker_cmdline(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_network_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
@@ -299,6 +337,7 @@ def test_images(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_network_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
@@ -322,6 +361,7 @@ def test_commands_in_docker(
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', cmds)
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_network_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
@@ -352,6 +392,7 @@ def test_sudo_outside(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_network_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
@@ -379,6 +420,7 @@ def test_auto_mount(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_network_param(args_left)
     if default_mount_point:
         if is_windows():
             args_left = assert_volume_params(args_left, [('/C', 'C:\\')])
@@ -429,6 +471,7 @@ def test_auto_mount_win32(
     )
     args_left = assert_workdir_param(args_left, '/C/tmp/test')
     args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_network_param(args_left)
     args_left = assert_volume_params(args_left, [('/C', 'C:\\')])
     args_left = std_assert_interactive(args_left)
     args_left = assert_env_params(
@@ -458,6 +501,7 @@ def test_perforce_win32(
     )
     args_left = assert_workdir_param(args_left, '/C/tmp/test')
     args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_network_param(args_left)
     args_left = std_assert_interactive(args_left)
     args_left = assert_env_params(
         args_left,
@@ -515,6 +559,7 @@ def test_device(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_network_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
@@ -551,6 +596,7 @@ def test_volumes(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_network_param(args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     args_left = assert_volume_params(args_left, expected_volumes)
@@ -589,6 +635,7 @@ def test_volumes_from(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_network_param(args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)

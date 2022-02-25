@@ -42,6 +42,7 @@ HOSTNAME = 'hostname'
 IMAGE = 'image'
 INTERACTIVE = 'interactive'
 MINIMUM_VERSION = 'minimum-version'
+NETWORK = 'network'
 PODMAN = 'podman'
 PORTS = 'ports'
 PULL = 'pull'
@@ -77,6 +78,7 @@ DEFAULT_CONFIG = {
     HOME: '/home/nobody',
     HOSTNAME: 'dog_docker',
     INTERACTIVE: True,
+    NETWORK: 'host',
     PORTS: {},
     PULL: False,
     SANITY_CHECK_ALWAYS: False,
@@ -477,6 +479,8 @@ def docker_run(config: DogConfig) -> int:
     args += [
         'run',
         '--rm',
+        '--network',
+        config[NETWORK],
         '--hostname={}'.format(config[HOSTNAME]),
         '-w',
         str(config[CWD]),

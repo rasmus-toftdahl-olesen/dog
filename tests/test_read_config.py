@@ -20,6 +20,7 @@ from dog import (
     INTERACTIVE,
     MAX_DOG_CONFIG_VERSION,
     MINIMUM_VERSION,
+    NETWORK,
     PORTS,
     PULL,
     SANITY_CHECK_ALWAYS,
@@ -82,6 +83,7 @@ def test_default_config(
     assert config[INTERACTIVE] is True
     assert config[PORTS] == {}
     assert config[PULL] is False
+    assert config[NETWORK] == 'host'
     assert config[SANITY_CHECK_ALWAYS] is False
     assert config[SUDO_OUTSIDE_DOCKER] is False
     assert config[TERMINAL] is False
@@ -252,6 +254,14 @@ def test_dog_is_minimum_version_or_newer(
 ):
     update_dog_config(tmp_path, {DOG: {MINIMUM_VERSION: minimum_version}})
     call_read_config()
+
+
+@pytest.mark.parametrize('network', ['host', 'none', 'mynetwork'])
+def test_network_in_dog_config(
+    call_read_config, basic_dog_config_with_image, tmp_path, network: str
+):
+    update_dog_config(tmp_path, {DOG: {NETWORK: network}})
+    assert call_read_config()[NETWORK] == network
 
 
 def test_usb_devices(

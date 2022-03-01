@@ -67,6 +67,8 @@ VOLUMES = 'volumes'
 VOLUMES_FROM = 'volumes-from'
 WIN32_CWD = 'win32-cwd'
 
+DOG_CONFIG_SECTIONS = [DOG, USB_DEVICES, VOLUMES, VOLUMES_FROM]
+
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
 
 
@@ -282,6 +284,15 @@ def handle_dict_config_vars(config: configparser.ConfigParser, dog_config):
             dog_config[v] = dict(config[v])
 
 
+def handler_user_sections(config: configparser.ConfigParser, dog_config):
+    for section in config.sections():
+        if section in DOG_CONFIG_SECTIONS:
+            continue
+        conf_section = config[section]
+        for key in conf_section:
+            dog_config['{}_{}'.format(section, key)] = conf_section[key]
+
+
 def read_config_file(dog_config_file: Path) -> DogConfig:
     config = configparser.ConfigParser(delimiters='=')
     with dog_config_file.open() as f:
@@ -296,6 +307,7 @@ def read_config_file(dog_config_file: Path) -> DogConfig:
     handle_booleans_in_config(config, dog_config)
     handle_user_env_vars(dog_config)
     handle_dict_config_vars(config, dog_config)
+    handler_user_sections(config, dog_config)
 
     if EXPOSED_DOG_VARIABLES in dog_config:
         dog_config[EXPOSED_DOG_VARIABLES] = list_from_config_entry(

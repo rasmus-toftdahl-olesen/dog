@@ -534,3 +534,19 @@ def test_include_config_order(
     assert call_read_config()['dog2'] == 'dog2'
     assert call_read_config()['dog_common'] == 'dog'
     assert call_read_config()['global_common'] == 'dog'
+
+
+def test_user_sections(call_read_config, basic_dog_config_with_image, tmp_path):
+    update_dog_config(tmp_path, {'vars': {'test1': 'foo', 'test2': 'bar'}})
+
+    config = call_read_config()
+    assert config['vars_test1'] == 'foo'
+    assert config['vars_test2'] == 'bar'
+
+    update_dog_config(tmp_path, {'vars': {'test3': 42}, 'my-vars': {'test': 'foobar'}})
+
+    config = call_read_config()
+    assert config['vars_test1'] == 'foo'
+    assert config['vars_test2'] == 'bar'
+    assert config['vars_test3'] == '42'
+    assert config['my-vars_test'] == 'foobar'

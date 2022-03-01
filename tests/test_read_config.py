@@ -17,6 +17,7 @@ from dog import (
     GROUP,
     HOME,
     HOSTNAME,
+    INCLUDE_DOG_CONFIG,
     INTERACTIVE,
     MAX_DOG_CONFIG_VERSION,
     MINIMUM_VERSION,
@@ -361,3 +362,175 @@ def test_volumes_from_with_failing_registry_subst(
         '"registry" used in "$registry/my_tool:latest" not found in config'
         in captured.err
     )
+
+
+def test_include_missing_file(
+    call_read_config, basic_dog_config_with_image, tmp_path, capsys
+):
+    missing_file_name = 'missing-include.config'
+    update_dog_config(tmp_path, {DOG: {INCLUDE_DOG_CONFIG: missing_file_name}})
+
+    with pytest.raises(SystemExit):
+        call_read_config()
+    captured = capsys.readouterr()
+    expected_error = (
+        f'Could not find "{missing_file_name}" used in {INCLUDE_DOG_CONFIG} here:'
+        f' {tmp_path / missing_file_name}'
+    )
+    assert expected_error in captured.err
+
+
+def test_include_non_config_file(
+    call_read_config, basic_dog_config_with_image, tmp_path, capsys
+):
+    empty_config_file = 'empty.config'
+    update_dog_config(tmp_path, {DOG: {INCLUDE_DOG_CONFIG: empty_config_file}})
+    update_dog_config(tmp_path / empty_config_file, {})
+
+    with pytest.raises(SystemExit):
+        call_read_config()
+    captured = capsys.readouterr()
+    expected_error = f'Could not find [dog] in {tmp_path / empty_config_file}'
+    assert expected_error in captured.err
+
+
+def test_include_valid_config_file(
+    call_read_config, basic_dog_config_with_image, tmp_path
+):
+    empty_config_file = 'empty.config'
+    update_dog_config(tmp_path, {DOG: {INCLUDE_DOG_CONFIG: empty_config_file}})
+    update_dog_config(
+        tmp_path / empty_config_file, {DOG: {'dog-config-file-version': '1'}}
+    )
+
+    assert INCLUDE_DOG_CONFIG not in call_read_config()
+
+
+def test_versions_in_included_file(
+    call_read_config, basic_dog_config_with_image, tmp_path, capsys
+):
+    empty_config_file = 'empty.config'
+    update_dog_config(tmp_path, {DOG: {INCLUDE_DOG_CONFIG: empty_config_file}})
+    update_dog_config(tmp_path / empty_config_file, {DOG: {}})
+
+    with pytest.raises(SystemExit):
+        call_read_config()
+    captured = capsys.readouterr()
+    expected_error = (
+        'Do not know how to handle a dog.config file without'
+        ' dog-config-file-version specified'
+    )
+    assert expected_error in captured.err
+
+    update_dog_config(
+        tmp_path / empty_config_file,
+        {
+            DOG: {
+                'dog-config-file-version': '1',
+                MINIMUM_VERSION: ACTUAL_DOG_VERSION + 5,
+            }
+        },
+    )
+
+    with pytest.raises(SystemExit):
+        call_read_config()
+    captured = capsys.readouterr()
+    expected_error = (
+        f'Minimum version required ({ACTUAL_DOG_VERSION + 5}) is greater than your'
+        f' dog version ({ACTUAL_DOG_VERSION}) - please upgrade dog'
+    )
+    assert expected_error in captured.err
+
+
+def test_include_with_path(
+    call_read_config, basic_dog_config_with_image, tmp_path, tmp_path_factory
+):
+    test_dir = tmp_path_factory.mktemp('test_dir')
+    empty_config_file = test_dir / 'empty.config'
+    update_dog_config(tmp_path, {DOG: {INCLUDE_DOG_CONFIG: str(empty_config_file)}})
+    update_dog_config(empty_config_file, {DOG: {'dog-config-file-version': '1'}})
+
+    assert INCLUDE_DOG_CONFIG not in call_read_config()
+
+    relative_path = empty_config_file.relative_to(tmp_path.parent)
+    update_dog_config(tmp_path, {DOG: {INCLUDE_DOG_CONFIG: f'../{relative_path}'}})
+
+    assert INCLUDE_DOG_CONFIG not in call_read_config()
+
+
+def test_multi_level_include(call_read_config, basic_dog_config_with_image, tmp_path):
+    inc_config_1 = tmp_path / 'config1.config'
+    inc_config_2 = tmp_path / 'config2.config'
+    update_dog_config(tmp_path, {DOG: {INCLUDE_DOG_CONFIG: str(inc_config_1)}})
+    update_dog_config(
+        inc_config_1,
+        {DOG: {'dog-config-file-version': '1', INCLUDE_DOG_CONFIG: str(inc_config_2)}},
+    )
+    update_dog_config(inc_config_2, {DOG: {'dog-config-file-version': '1'}})
+
+    assert INCLUDE_DOG_CONFIG not in call_read_config()
+
+
+def test_include_config_order(
+    call_read_config, basic_dog_config_with_image, tmp_path, home_temp_dir
+):
+    user_config_file(
+        home_temp_dir,
+        {
+            DOG: {
+                'dog-config-file-version': '1',
+                'user1': 'user1',
+                'user_common': 'user1',
+                'global_common': 'user1',
+                INCLUDE_DOG_CONFIG: 'user2.config',
+            }
+        },
+    )
+    update_dog_config(
+        home_temp_dir / 'user2.config',
+        {
+            DOG: {
+                'dog-config-file-version': 1,
+                'user2': 'user2',
+                'user_common': 'user2',
+                'global_common': 'user2',
+            }
+        },
+    )
+
+    assert call_read_config()['user1'] == 'user1'
+    assert call_read_config()['user2'] == 'user2'
+    assert call_read_config()['user_common'] == 'user1'
+    assert call_read_config()['global_common'] == 'user1'
+
+    update_dog_config(
+        tmp_path,
+        {
+            DOG: {
+                INCLUDE_DOG_CONFIG: 'dog2.config',
+                'dog': 'dog',
+                'dog_common': 'dog',
+                'global_common': 'dog',
+            }
+        },
+    )
+
+    update_dog_config(
+        tmp_path / 'dog2.config',
+        {
+            DOG: {
+                'dog-config-file-version': 1,
+                'dog2': 'dog2',
+                'dog_common': 'dog2',
+                'global_common': 'dog2',
+            }
+        },
+    )
+
+    assert call_read_config()['user1'] == 'user1'
+    assert call_read_config()['user2'] == 'user2'
+    assert call_read_config()['user_common'] == 'user1'
+    assert call_read_config()['dog'] == 'dog'
+    assert call_read_config()['dog2'] == 'dog2'
+    assert call_read_config()['dog_common'] == 'dog'
+    assert call_read_config()['global_common'] == 'dog'

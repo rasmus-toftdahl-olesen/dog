@@ -99,10 +99,10 @@ def append_to_dog_config(tmp_path: Path, extra_dog_config_lines: List[str]):
 def update_dog_config(
     config_file_path: Path, additional_config: Mapping[str, Mapping[str, Any]]
 ):
-    if config_file_path.parts[-1] == '.dog.config':
-        dog_config = config_file_path
-    else:
+    if config_file_path.is_dir():
         dog_config = config_file_path / 'dog.config'
+    else:
+        dog_config = config_file_path
     config = configparser.ConfigParser()
     if dog_config.exists():
         config.read(dog_config)

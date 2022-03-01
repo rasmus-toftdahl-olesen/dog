@@ -175,6 +175,23 @@ def test_volumes_v1(
     }
 
 
+def test_volumes_v1_conditional(
+    call_read_config, basic_dog_config_with_image, tmp_path, monkeypatch
+):
+    update_dog_config(
+        tmp_path,
+        {
+            DOG: {AUTO_MOUNT: False},
+            VOLUMES: {
+                '?/test_path': str(tmp_path / 'not_there'),
+                '/there': str(tmp_path / 'there'),
+            },
+        },
+    )
+    monkeypatch.setattr(os.path, 'exists', lambda x: x == str(tmp_path / 'there'))
+    assert call_read_config()[VOLUMES] == {'/there': str(tmp_path / 'there')}
+
+
 def test_volumes_v2(
     call_read_config, basic_dog_config_with_image, tmp_path, home_temp_dir
 ):
@@ -197,12 +214,29 @@ def test_volumes_v2(
     )
     assert call_read_config()[VOLUMES] == {'/FOO': '/bar', '/foobar': '/baz'}
 
-    update_dog_config(tmp_path, {VOLUMES: {'vol3': '~/.ssh:$home/.ssh:ro'}})
+    update_dog_config(tmp_path, {VOLUMES: {'vol3': '~/.ssh:${home}/.ssh:ro'}})
     assert call_read_config()[VOLUMES] == {
         '/FOO': '/bar',
         '/foobar': '/baz',
         str(home_temp_dir / '.ssh:ro'): str(home_temp_dir / '.ssh'),
     }
+
+
+def test_volumes_v2_conditional(
+    call_read_config, basic_dog_config_with_image, tmp_path, monkeypatch
+):
+    update_dog_config(
+        tmp_path,
+        {
+            DOG: {AUTO_MOUNT: False, 'dog-config-file-version': '2'},
+            VOLUMES: {
+                'vol1?': f'{tmp_path / "not_there"}:/test_path',
+                'vol2': f'{tmp_path / "there"}:/there',
+            },
+        },
+    )
+    monkeypatch.setattr(os.path, 'exists', lambda x: x == str(tmp_path / 'there'))
+    assert call_read_config()[VOLUMES] == {'/there': str(tmp_path / 'there')}
 
 
 def test_volumes_v2_using_v1_format(
@@ -323,7 +357,7 @@ def test_volumes_from(call_read_config, basic_dog_config_with_image, tmp_path):
 
 
 def test_volumes_from_with_registry_subst(
-    call_read_config, basic_dog_config_with_image, tmp_path
+    call_read_config, basic_v2_dog_config_with_image, tmp_path
 ):
     assert call_read_config()[VOLUMES_FROM] == {}
 
@@ -331,7 +365,7 @@ def test_volumes_from_with_registry_subst(
         tmp_path,
         {
             DOG: {'registry': 'gitlab.ci.demant.com:4567/dockers'},
-            VOLUMES_FROM: {'vol1': '$registry/my_tool:latest'},
+            VOLUMES_FROM: {'vol1': '${registry}/my_tool:latest'},
         },
     )
     assert call_read_config()[VOLUMES_FROM] == {
@@ -342,7 +376,7 @@ def test_volumes_from_with_registry_subst(
         tmp_path,
         {
             DOG: {'custom_registry': 'my.example.com/my-custom-dockers'},
-            VOLUMES_FROM: {'vol1': '$custom_registry/my_tool:latest'},
+            VOLUMES_FROM: {'vol1': '${custom_registry}/my_tool:latest'},
         },
     )
     assert call_read_config()[VOLUMES_FROM] == {
@@ -351,17 +385,14 @@ def test_volumes_from_with_registry_subst(
 
 
 def test_volumes_from_with_failing_registry_subst(
-    call_read_config, basic_dog_config_with_image, tmp_path, capsys
+    call_read_config, basic_v2_dog_config_with_image, tmp_path, capsys
 ):
-    update_dog_config(tmp_path, {VOLUMES_FROM: {'vol1': '$registry/my_tool:latest'}})
+    update_dog_config(tmp_path, {VOLUMES_FROM: {'vol1': '${registry}/my_tool:latest'}})
 
     with pytest.raises(SystemExit):
         call_read_config()
     captured = capsys.readouterr()
-    assert (
-        '"registry" used in "$registry/my_tool:latest" not found in config'
-        in captured.err
-    )
+    assert '"registry" used in "${registry}" not found in config' in captured.err
 
 
 def test_include_missing_file(
@@ -550,3 +581,92 @@ def test_user_sections(call_read_config, basic_dog_config_with_image, tmp_path):
     assert config['vars_test2'] == 'bar'
     assert config['vars_test3'] == '42'
     assert config['my-vars_test'] == 'foobar'
+
+
+def test_variable_subst(
+    call_read_config, basic_v2_dog_config_with_image, tmp_path, capsys
+):
+    update_dog_config(
+        tmp_path, {DOG: {'test1': 'foo', 'test2': '${test1}_bar', '${test1}': 'baz'}}
+    )
+
+    config = call_read_config()
+    assert config['test1'] == 'foo'
+    assert config['test2'] == 'foo_bar'
+    assert config['foo'] == 'baz'
+    assert '${test1}' not in config
+
+
+def test_variable_multi_subst(
+    call_read_config, basic_v2_dog_config_with_image, tmp_path, capsys
+):
+    update_dog_config(
+        tmp_path,
+        {DOG: {'t1': 'foo', 't2': 'bar', '${t1}_${t2}': 'baz', 'foo': '${t1}${t2}'}},
+    )
+
+    config = call_read_config()
+    assert config['t1'] == 'foo'
+    assert config['t2'] == 'bar'
+    assert config['foo_bar'] == 'baz'
+    assert config['foo'] == 'foobar'
+    assert '${t1}_${t2}' not in config
+
+
+def test_variable_subst_not_found_value(
+    call_read_config, basic_v2_dog_config_with_image, tmp_path, capsys
+):
+    update_dog_config(tmp_path, {DOG: {'${not_there}': 'foo'}})
+
+    with pytest.raises(SystemExit):
+        call_read_config()
+    captured = capsys.readouterr()
+    expected_error = '"not_there" used in "${not_there}" not found in config'
+    assert expected_error in captured.err
+
+
+def test_variable_subst_not_found_key(
+    call_read_config, basic_v2_dog_config_with_image, tmp_path, capsys
+):
+    update_dog_config(tmp_path, {DOG: {'test_not_there': '${not_there}'}})
+
+    with pytest.raises(SystemExit):
+        call_read_config()
+    captured = capsys.readouterr()
+    expected_error = '"not_there" used in "${not_there}" not found in config'
+    assert expected_error in captured.err
+
+
+def test_subst_for_values_from(
+    call_read_config, basic_v2_dog_config_with_image, tmp_path
+):
+    update_dog_config(
+        tmp_path,
+        {
+            DOG: {'registry': 'my.example.com/my-custom-dockers'},
+            'tool-versions': {'my_tool': '220301.1'},
+            VOLUMES_FROM: {
+                'my_tool_${tool-versions_my_tool}': (
+                    '${registry}/my_tool:${tool-versions_my_tool}'
+                )
+            },
+        },
+    )
+
+    assert call_read_config()[VOLUMES_FROM] == {
+        'my_tool_220301.1': 'my.example.com/my-custom-dockers/my_tool:220301.1'
+    }
+
+
+def test_subst_for_usb_devices(
+    call_read_config, basic_v2_dog_config_with_image, tmp_path
+):
+    update_dog_config(
+        tmp_path,
+        {
+            'usb': {'vendor1': 'abcd', 'product1': '4242'},
+            USB_DEVICES: {'dev1': '${usb_vendor1}:${usb_product1}'},
+        },
+    )
+
+    assert call_read_config()[USB_DEVICES] == {'dev1': 'abcd:4242'}

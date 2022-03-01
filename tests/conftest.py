@@ -124,6 +124,13 @@ def basic_dog_config_with_image(tmp_path, basic_dog_config):
 
 
 @pytest.fixture
+def basic_v2_dog_config_with_image(tmp_path, basic_dog_config):
+    update_dog_config(
+        tmp_path, {DOG: {'image': 'debian:latest', 'dog-config-file-version': '2'}}
+    )
+
+
+@pytest.fixture
 def system_temp_dir() -> str:
     if is_windows():
         basedir = os.environ['TEMP']

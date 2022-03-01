@@ -68,6 +68,7 @@ VOLUMES_FROM = 'volumes-from'
 WIN32_CWD = 'win32-cwd'
 
 DOG_CONFIG_SECTIONS = [DOG, USB_DEVICES, VOLUMES, VOLUMES_FROM]
+SUBST_NAME_RE = re.compile(r'\${([^}]+)}')
 
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
 
@@ -205,6 +206,21 @@ def get_user_env_vars(
     return user_env_vars
 
 
+def parse_volumes_v1(volumes):
+    """Translate $home in v1 format to ${home} in v2 format,
+    so general subst can be used.
+    """
+    for key in list(volumes.keys()):
+        if '$home' in key:
+            if key[0] == '$':
+                new_key = '${{home}}{}'.format(key[5:])
+            else:
+                new_key = '?${{home}}{}'.format(key[6:])
+            volumes[new_key] = volumes[key]
+            del volumes[key]
+    return volumes
+
+
 def parse_volumes_v2(volumes):
     res = {}
     for key, vol in volumes.items():
@@ -218,11 +234,13 @@ def parse_volumes_v2(volumes):
                     ' Did you use dog.config v1 format in a v2 file?'
                 ).format(key, vol)
             )
+        if key[-1] == '?':
+            inside = '?' + inside
         res[inside] = outside
     return res
 
 
-volumes_parser = [lambda x: x, parse_volumes_v2]
+volumes_parser = [parse_volumes_v1, parse_volumes_v2]
 
 
 def get_config_file_version(dog_config):
@@ -243,6 +261,7 @@ def get_config_file_version(dog_config):
             )
         )
     dog_config_file_version = int(dog_config_file_version)
+    dog_config[DOG_CONFIG_FILE_VERSION] = dog_config_file_version
     if dog_config_file_version < 1 or dog_config_file_version > MAX_DOG_CONFIG_VERSION:
         fatal_error(
             (
@@ -664,6 +683,36 @@ def update_config_from_files(
         update_config(existing_config, conf[0])
 
 
+def subst_in_dict(d, config):
+    def replace(m):
+        var = m.group(1)
+        if var in config:
+            return config[var]
+        fatal_error('"{0}" used in "${{{0}}}" not found in config'.format(var))
+
+    for key, value in d.items():
+        if not isinstance(value, str):
+            continue
+        if '${' in value:
+            d[key] = SUBST_NAME_RE.sub(replace, value)
+
+    for key in list(d.keys()):
+        if '${' in key:
+            new_key = SUBST_NAME_RE.sub(replace, key)
+            d[new_key] = d[key]
+            del d[key]
+
+
+def perform_variable_subst(config):
+    if config[DOG_CONFIG_FILE_VERSION] == 1:
+        subst_in_dict(config[VOLUMES], config)
+    else:
+        subst_in_dict(config, config)
+        subst_in_dict(config[VOLUMES], config)
+        subst_in_dict(config[VOLUMES_FROM], config)
+        subst_in_dict(config[USB_DEVICES], config)
+
+
 def handle_auto_mount(config):
     if not config[AUTO_MOUNT]:
         return
@@ -724,8 +773,6 @@ def handle_volumes(config):
             new_inside = inside[1:]
         else:
             new_inside = inside
-        if new_inside.startswith('$' + HOME):
-            new_inside = config[HOME] + new_inside[5:]
         if outside.startswith('~'):
             new_outside = home_path + outside[1:]
         else:
@@ -735,27 +782,13 @@ def handle_volumes(config):
     config[VOLUMES] = volumes
 
 
-def handle_volumes_from(config):
-    if VOLUMES_FROM not in config:
-        return
-    registry_var_re = re.compile(r'^\$(\w+)(/.*)')
-    for key, vol in config[VOLUMES_FROM].items():
-        m = registry_var_re.match(vol)
-        if not m:
-            continue
-        try:
-            config[VOLUMES_FROM][key] = config[m[1]] + m[2]
-        except KeyError:
-            fatal_error('"{}" used in "{}" not found in config'.format(m[1], m[0]))
-
-
 def update_dependencies_in_config(config: DogConfig):
     """Update values in config depending on other values in config."""
+    perform_variable_subst(config)
     handle_auto_mount(config)
     handle_full_image(config)
     handle_usb_devices(config)
     handle_volumes(config)
-    handle_volumes_from(config)
 
 
 def get_minimum_version_from_config(version_var: str, config: DogConfig) -> str:

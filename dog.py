@@ -9,8 +9,9 @@ import pprint
 import re
 import subprocess
 import sys
+from collections import deque
 from pathlib import Path
-from typing import List, Dict, Union
+from typing import List, Deque, Dict, Tuple, Union
 
 # Version of dog
 DOG_VERSION = 11
@@ -41,6 +42,7 @@ GROUP = 'group'
 HOME = 'home'
 HOSTNAME = 'hostname'
 IMAGE = 'image'
+INCLUDE_DOG_CONFIG = 'include-dog-config'
 INTERACTIVE = 'interactive'
 MINIMUM_VERSION = 'minimum-version'
 NETWORK = 'network'
@@ -151,6 +153,11 @@ def log_config(name: str, config: DogConfig, filename: Path = None):
     else:
         print('{} Config:'.format(name))
     pprint.pprint(config, indent=4)
+
+
+def log_config_from_files(name: str, config: Deque[Tuple[DogConfig, Path]]):
+    for conf in config:
+        log_config(name, conf[0], conf[1])
 
 
 def fatal_error(text: str, error_code: int = -1):
@@ -275,10 +282,14 @@ def handle_dict_config_vars(config: configparser.ConfigParser, dog_config):
             dog_config[v] = dict(config[v])
 
 
-def read_dog_config(dog_config_file: Path) -> DogConfig:
+def read_config_file(dog_config_file: Path) -> DogConfig:
     config = configparser.ConfigParser(delimiters='=')
-    config.read(str(dog_config_file))
-    dog_config = dict(config[DOG])
+    with dog_config_file.open() as f:
+        config.read_file(f)
+    try:
+        dog_config = dict(config[DOG])
+    except KeyError:
+        fatal_error('Could not find [dog] in {}'.format(dog_config_file))
 
     dog_config_file_version = get_config_file_version(dog_config)
 
@@ -296,6 +307,25 @@ def read_dog_config(dog_config_file: Path) -> DogConfig:
         )
     set_dog_config_path(dog_config, dog_config_file)
     return dog_config
+
+
+def read_dog_config(dog_config_file: Path) -> Deque[Tuple[DogConfig, Path]]:
+    res = deque()
+    while True:
+        try:
+            conf = read_config_file(dog_config_file)
+        except FileNotFoundError:
+            fatal_error(
+                'Could not find "{}" used in {} here: {}'.format(
+                    dog_config_file.name, INCLUDE_DOG_CONFIG, dog_config_file
+                )
+            )
+        res.appendleft((conf, dog_config_file))
+        if INCLUDE_DOG_CONFIG not in conf:
+            break
+        dog_config_file = dog_config_file.parent / conf[INCLUDE_DOG_CONFIG]
+        del conf[INCLUDE_DOG_CONFIG]
+    return res
 
 
 def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
@@ -615,6 +645,13 @@ def update_config(existing_config: DogConfig, new_config: DogConfig):
             existing_config[k] = copy.copy(new_config[k])
 
 
+def update_config_from_files(
+    existing_config: DogConfig, config_from_files: Deque[Tuple[DogConfig, Path]]
+):
+    for conf in config_from_files:
+        update_config(existing_config, conf[0])
+
+
 def handle_auto_mount(config):
     if not config[AUTO_MOUNT]:
         return
@@ -754,7 +791,7 @@ def read_config(argv) -> DogConfig:
 
     env_config = get_env_config()
 
-    user_config = {}
+    user_config = deque()
     user_config_file = Path.home() / ('.' + CONFIG_FILE)
     if user_config_file.is_file():
         user_config = read_dog_config(user_config_file)
@@ -765,17 +802,19 @@ def read_config(argv) -> DogConfig:
     config = {}
     update_config(config, DEFAULT_CONFIG)
     update_config(config, env_config)
-    update_config(config, user_config)
-    update_config(config, dog_config)
+    update_config_from_files(config, user_config)
+    update_config_from_files(config, dog_config)
     update_config(config, command_line_config)
     update_dependencies_in_config(config)
+
     if config[VERBOSE]:
         log_config('Default', DEFAULT_CONFIG)
         log_config('Environment', env_config)
-        log_config('User', user_config, user_config_file)
-        log_config('Dog', dog_config, dog_config_file)
+        log_config_from_files('User', user_config)
+        log_config_from_files('Dog', dog_config)
         log_config('Cmdline', command_line_config)
         log_config('Final', config)
+
     return config
 
 

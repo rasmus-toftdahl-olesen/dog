@@ -216,10 +216,6 @@ def std_assert_hostname_param(args_left):
     return assert_hostname_param(args_left, 'mocked_hostname')
 
 
-def std_assert_network_param(args_left):
-    return assert_network_param(args_left, 'host')
-
-
 def std_assert_volume_params(tmp_path, args_left):
     if is_windows():
         return assert_volume_params(args_left, [('/C', 'C:\\')])
@@ -313,7 +309,6 @@ def test_simple_docker_cmdline(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
-    args_left = std_assert_network_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
@@ -337,7 +332,6 @@ def test_images(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
-    args_left = std_assert_network_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
@@ -361,7 +355,6 @@ def test_commands_in_docker(
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', cmds)
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
-    args_left = std_assert_network_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
@@ -392,7 +385,6 @@ def test_sudo_outside(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
-    args_left = std_assert_network_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
@@ -420,7 +412,6 @@ def test_auto_mount(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
-    args_left = std_assert_network_param(args_left)
     if default_mount_point:
         if is_windows():
             args_left = assert_volume_params(args_left, [('/C', 'C:\\')])
@@ -471,7 +462,6 @@ def test_auto_mount_win32(
     )
     args_left = assert_workdir_param(args_left, '/C/tmp/test')
     args_left = std_assert_hostname_param(args_left)
-    args_left = std_assert_network_param(args_left)
     args_left = assert_volume_params(args_left, [('/C', 'C:\\')])
     args_left = std_assert_interactive(args_left)
     args_left = assert_env_params(
@@ -501,7 +491,6 @@ def test_perforce_win32(
     )
     args_left = assert_workdir_param(args_left, '/C/tmp/test')
     args_left = std_assert_hostname_param(args_left)
-    args_left = std_assert_network_param(args_left)
     args_left = std_assert_interactive(args_left)
     args_left = assert_env_params(
         args_left,
@@ -559,7 +548,6 @@ def test_device(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
-    args_left = std_assert_network_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
@@ -596,7 +584,6 @@ def test_volumes(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
-    args_left = std_assert_network_param(args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     args_left = assert_volume_params(args_left, expected_volumes)
@@ -635,7 +622,6 @@ def test_volumes_from(
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
-    args_left = std_assert_network_param(args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)

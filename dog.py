@@ -85,7 +85,6 @@ DEFAULT_CONFIG = {
     HOME: '/home/nobody',
     HOSTNAME: 'dog_docker',
     INTERACTIVE: True,
-    NETWORK: 'host',
     PORTS: {},
     PULL: False,
     SANITY_CHECK_ALWAYS: False,
@@ -569,8 +568,6 @@ def docker_run(config: DogConfig) -> int:
     args += [
         'run',
         '--rm',
-        '--network',
-        config[NETWORK],
         '--hostname={}'.format(config[HOSTNAME]),
         '-w',
         str(config[CWD]),
@@ -590,6 +587,9 @@ def docker_run(config: DogConfig) -> int:
 
     if config[TERMINAL]:
         args.append('-t')
+
+    if NETWORK in config:
+        args.extend(['--network', config[NETWORK]])
 
     if DEVICE in config:
         args.append('--device={}'.format(config[DEVICE]))

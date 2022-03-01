@@ -558,14 +558,7 @@ def docker_run_volumes_from(config: DogConfig):
         run_volume_installer(name, image)
         for name, image in config[VOLUMES_FROM].items()
     ]
-    exit_codes = loop.run_until_complete(asyncio.gather(*tasks))
-    for name, ec in zip(config[VOLUMES_FROM].keys(), exit_codes):
-        if not (ec == 0 or ec == 125):
-            fatal_error(
-                'Unexpected returncode: {} from run of volumes_from "{}"'.format(
-                    ec, name
-                )
-            )
+    loop.run_until_complete(asyncio.gather(*tasks))
 
 
 def docker_run(config: DogConfig) -> int:

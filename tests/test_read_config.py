@@ -84,7 +84,6 @@ def test_default_config(
     assert config[INTERACTIVE] is True
     assert config[PORTS] == {}
     assert config[PULL] is False
-    assert config[NETWORK] == 'host'
     assert config[SANITY_CHECK_ALWAYS] is False
     assert config[SUDO_OUTSIDE_DOCKER] is False
     assert config[TERMINAL] is False

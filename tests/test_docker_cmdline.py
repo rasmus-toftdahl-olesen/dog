@@ -1,7 +1,6 @@
 import itertools
 import os
 import platform
-import subprocess
 import sys
 from collections.abc import Iterable
 from pathlib import Path, PureWindowsPath
@@ -33,19 +32,20 @@ from dog import (
 )
 
 
-class MockSubprocess:
+class MockExecVp:
     def __init__(self):
-        self.run_args = None
+        self.file = None
+        self.args = None
 
-    def mock_run(self, *args):
-        self.run_args = args[0]
-        return subprocess.CompletedProcess(args=args, returncode=0)
+    def mock_execvp(self, file, args):
+        self.file = file
+        self.args = args
 
 
 @pytest.fixture
-def mock_subprocess(monkeypatch) -> MockSubprocess:
-    m = MockSubprocess()
-    monkeypatch.setattr(subprocess, 'run', m.mock_run)
+def mock_execvp(monkeypatch):
+    m = MockExecVp()
+    monkeypatch.setattr(os, 'execvp', m.mock_execvp)
     return m
 
 
@@ -111,15 +111,16 @@ def flatten(container: Iterable) -> List:
 
 
 def assert_docker_std_cmdline(
-    run_args: List[str], sudo_outside: bool = False, use_podman: bool = False
+    exec_mock: MockExecVp, sudo_outside: bool = False, use_podman: bool = False
 ) -> List[str]:
     expected_args = []
     if sudo_outside:
         expected_args.append('sudo')
     docker_cmd = 'podman' if use_podman else 'docker'
     expected_args.extend([docker_cmd, 'run', '--rm'])
-    assert expected_args == run_args[: len(expected_args)]
-    return run_args[len(expected_args) :]
+    assert exec_mock.file == expected_args[0]
+    assert exec_mock.args[: len(expected_args)] == expected_args
+    return exec_mock.args[len(expected_args) :]
 
 
 def assert_docker_image_and_cmd_inside_docker(
@@ -269,13 +270,13 @@ def test_network(
     basic_dog_config_with_image,
     call_main,
     tmp_path,
-    mock_subprocess,
+    mock_execvp,
     home_temp_dir,
     network: str,
 ):
     update_dog_config(tmp_path, {DOG: {NETWORK: network}})
     call_main('echo', 'foo')
-    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_std_cmdline(mock_execvp)
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'debian:latest', ['echo', 'foo']
     )
@@ -290,20 +291,13 @@ def test_network(
 
 @pytest.mark.parametrize('use_podman', [False, True])
 def test_simple_docker_cmdline(
-    basic_dog_config,
-    call_main,
-    tmp_path,
-    mock_subprocess,
-    home_temp_dir,
-    use_podman: bool,
+    basic_dog_config, call_main, tmp_path, mock_execvp, home_temp_dir, use_podman: bool,
 ):
     update_dog_config(
         tmp_path, {DOG: {IMAGE: 'rtol/centos-for-dog', USE_PODMAN: use_podman}}
     )
     call_main('echo', 'foo')
-    args_left = assert_docker_std_cmdline(
-        mock_subprocess.run_args, use_podman=use_podman
-    )
+    args_left = assert_docker_std_cmdline(mock_execvp, use_podman=use_podman)
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'rtol/centos-for-dog', ['echo', 'foo']
     )
@@ -317,16 +311,11 @@ def test_simple_docker_cmdline(
 
 @pytest.mark.parametrize('image_name', ['my_little_image', 'a/path/based/image'])
 def test_images(
-    basic_dog_config,
-    call_main,
-    tmp_path,
-    mock_subprocess,
-    home_temp_dir,
-    image_name: str,
+    basic_dog_config, call_main, tmp_path, mock_execvp, home_temp_dir, image_name: str,
 ):
     append_to_dog_config(tmp_path, ['image={}'.format(image_name)])
     call_main('echo', 'foo')
-    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_std_cmdline(mock_execvp)
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, image_name, ['echo', 'foo']
     )
@@ -342,16 +331,11 @@ def test_images(
     'cmds', [['echo', 'foo'], ['cat', '/tmp/test.txt'], ['my_cmd']]
 )
 def test_commands_in_docker(
-    basic_dog_config,
-    call_main,
-    tmp_path,
-    home_temp_dir,
-    mock_subprocess,
-    cmds: List[str],
+    basic_dog_config, call_main, tmp_path, home_temp_dir, mock_execvp, cmds: List[str],
 ):
     append_to_dog_config(tmp_path, ['image=my_image'])
     call_main(*cmds)
-    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_std_cmdline(mock_execvp)
     args_left = assert_docker_image_and_cmd_inside_docker(args_left, 'my_image', cmds)
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
@@ -373,13 +357,13 @@ def test_sudo_outside(
     basic_dog_config,
     call_main,
     tmp_path,
-    mock_subprocess,
+    mock_execvp,
     home_temp_dir,
     test_sudo: Tuple[str, bool],
 ):
     append_to_dog_config(tmp_path, ['image=my_image', test_sudo[0]])
     call_main('my_inside_cmd')
-    args_left = assert_docker_std_cmdline(mock_subprocess.run_args, test_sudo[1])
+    args_left = assert_docker_std_cmdline(mock_execvp, test_sudo[1])
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'my_image', ['my_inside_cmd']
     )
@@ -399,14 +383,14 @@ def test_auto_mount(
     basic_dog_config,
     call_main,
     tmp_path,
-    mock_subprocess,
+    mock_execvp,
     home_temp_dir,
     extra_dog_conf: str,
     default_mount_point: bool,
 ):
     append_to_dog_config(tmp_path, ['image=my_image', extra_dog_conf])
     call_main('my_inside_cmd')
-    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_std_cmdline(mock_execvp)
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'my_image', ['my_inside_cmd']
     )
@@ -451,12 +435,12 @@ def mock_win32(monkeypatch, tmp_path, win_path, dog_config_contents: List[str]):
 
 
 def test_auto_mount_win32(
-    call_main, basic_dog_config, tmp_path, mock_subprocess, monkeypatch
+    call_main, basic_dog_config, tmp_path, mock_execvp, monkeypatch
 ):
     win_path = PureWindowsPath('C:\\tmp\\test')
     mock_win32(monkeypatch, tmp_path, win_path, ['image=my_image'])
     call_main('my_inside_cmd')
-    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_std_cmdline(mock_execvp)
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'my_image', ['my_inside_cmd']
     )
@@ -480,12 +464,12 @@ def test_auto_mount_win32(
 
 
 def test_perforce_win32(
-    call_main, basic_dog_config, tmp_path, mock_subprocess, monkeypatch, home_temp_dir
+    call_main, basic_dog_config, tmp_path, mock_execvp, monkeypatch, home_temp_dir
 ):
     win_path = PureWindowsPath('C:\\tmp\\test')
     mock_win32(monkeypatch, tmp_path, win_path, ['image=my_image', 'auto-mount=False'])
     call_main('my_inside_cmd')
-    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_std_cmdline(mock_execvp)
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'my_image', ['my_inside_cmd']
     )
@@ -521,7 +505,7 @@ def test_device(
     basic_dog_config_with_image,
     call_main,
     tmp_path,
-    mock_subprocess,
+    mock_execvp,
     home_temp_dir,
     monkeypatch,
     device: str,
@@ -542,7 +526,7 @@ def test_device(
     if device:
         update_dog_config(tmp_path, {DOG: {DEVICE: device}})
     call_main('echo', 'foo')
-    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_std_cmdline(mock_execvp)
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'debian:latest', ['echo', 'foo']
     )
@@ -566,7 +550,7 @@ def test_volumes(
     basic_dog_config_with_image,
     call_main,
     tmp_path,
-    mock_subprocess,
+    mock_execvp,
     home_temp_dir,
     volumes: dict,
 ):
@@ -578,7 +562,7 @@ def test_volumes(
         expected_volumes.append((inside, outside))
     update_dog_config(tmp_path, {DOG: {DOG_CONFIG_FILE_VERSION: 2}, VOLUMES: volumes})
     call_main('echo', 'foo')
-    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_std_cmdline(mock_execvp)
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'debian:latest', ['echo', 'foo']
     )
@@ -610,13 +594,13 @@ def test_volumes_from(
     basic_dog_config_with_image,
     call_main,
     tmp_path,
-    mock_subprocess,
+    mock_execvp,
     home_temp_dir,
     volumes_from: dict,
 ):
     update_dog_config(tmp_path, {VOLUMES_FROM: volumes_from})
     call_main('echo', 'foo')
-    args_left = assert_docker_std_cmdline(mock_subprocess.run_args)
+    args_left = assert_docker_std_cmdline(mock_execvp)
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'debian:latest', ['echo', 'foo']
     )

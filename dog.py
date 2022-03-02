@@ -560,7 +560,7 @@ def docker_run_volumes_from(config: DogConfig):
     loop.run_until_complete(asyncio.gather(*tasks))
 
 
-def docker_run(config: DogConfig) -> int:
+def docker_run(config: DogConfig):
     args = []
     if config[SUDO_OUTSIDE_DOCKER]:
         args += [SUDO]
@@ -601,12 +601,9 @@ def docker_run(config: DogConfig) -> int:
     args.extend(config[ARGS])
 
     log_verbose(config, ' '.join(args))
-    try:
-        proc = subprocess.run(args)
-        return proc.returncode
-    except KeyboardInterrupt:
-        print('Dog received Ctrl+C')
-        return -1
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os.execvp(args[0], args)
 
 
 def docker_compose_run(config: DogConfig) -> int:
@@ -873,7 +870,7 @@ def main(argv) -> int:
     if config[VOLUMES_FROM] and config[AUTO_RUN_VOLUMES_FROM]:
         docker_run_volumes_from(config)
 
-    return docker_run(config)
+    docker_run(config)  # Does not return
 
 
 def setup_tools_main():

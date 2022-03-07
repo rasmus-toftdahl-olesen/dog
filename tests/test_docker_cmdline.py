@@ -294,12 +294,12 @@ def test_simple_docker_cmdline(
     basic_dog_config, call_main, tmp_path, mock_execvp, home_temp_dir, use_podman: bool,
 ):
     update_dog_config(
-        tmp_path, {DOG: {IMAGE: 'rtol/centos-for-dog', USE_PODMAN: use_podman}}
+        tmp_path, {DOG: {IMAGE: 'ghcr.io/rasmus-toftdahl-olesen/dog/centos-for-dog', USE_PODMAN: use_podman}}
     )
     call_main('echo', 'foo')
     args_left = assert_docker_std_cmdline(mock_execvp, use_podman=use_podman)
     args_left = assert_docker_image_and_cmd_inside_docker(
-        args_left, 'rtol/centos-for-dog', ['echo', 'foo']
+        args_left, 'ghcr.io/rasmus-toftdahl-olesen/dog/centos-for-dog', ['echo', 'foo']
     )
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)

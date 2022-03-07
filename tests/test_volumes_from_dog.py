@@ -22,7 +22,6 @@ def call_shell(my_dog, monkeypatch):
     return call
 
 
-@pytest.mark.skip(reason='volume-installer dockers needed')
 def test_run_tool1(call_shell, capstrip, dog_env):
     call_shell(f'{dog_env} /opt/tool1/tool1.sh')
     stdout, stderr = capstrip.get()
@@ -30,7 +29,6 @@ def test_run_tool1(call_shell, capstrip, dog_env):
     assert 'tool1 ran' in stdout
 
 
-@pytest.mark.skip(reason='volume-installer dockers needed')
 def test_run_tool2(call_shell, capstrip, dog_env):
     call_shell(f'{dog_env} /opt/tool2/tool2.sh')
     stdout, stderr = capstrip.get()

@@ -1,0 +1,28 @@
+name: volume-docker-integration-tests
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build and push Docker tool1 image
+        uses: docker/build-push-action@v1
+        with:
+          repository: rasmus-toftdahl-olesen/dog/volume-docker-integration-tests-tool1
+          registry: docker.pkg.github.com
+          tag_with_ref: true
+          path: tests/dockers/volume-installer-1
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker tool2 image
+        uses: docker/build-push-action@v1
+        with:
+          repository: rasmus-toftdahl-olesen/dog/volume-docker-integration-tests-tool2
+          registry: docker.pkg.github.com
+          tag_with_ref: true
+          path: tests/dockers/volume-installer-2
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}

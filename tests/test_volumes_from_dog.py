@@ -22,6 +22,11 @@ def call_shell(my_dog, monkeypatch):
     return call
 
 
+def test_pull_centos_for_dog(call_shell, capstrip, dog_env):
+    call_shell(f'{dog_env} --pull env')
+    print(capstrip.get())
+
+
 def test_run_tool1(call_shell, capstrip, dog_env):
     call_shell(f'{dog_env} /opt/tool1/tool1.sh')
     stdout, stderr = capstrip.get()

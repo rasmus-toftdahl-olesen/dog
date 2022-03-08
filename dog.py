@@ -552,12 +552,16 @@ def docker_run_volumes_from(config: DogConfig):
         )
         return await proc.wait()
 
-    loop = asyncio.get_event_loop()
-    tasks = [
-        run_volume_installer(name, image)
-        for name, image in config[VOLUMES_FROM].items()
-    ]
-    loop.run_until_complete(asyncio.gather(*tasks))
+    async def run_all():
+        tasks = [
+            run_volume_installer(name, image)
+            for name, image in config[VOLUMES_FROM].items()
+        ]
+        await asyncio.gather(*tasks)
+
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(run_all())
+    loop.close()
 
 
 def docker_run(config: DogConfig):
@@ -601,9 +605,18 @@ def docker_run(config: DogConfig):
     args.extend(config[ARGS])
 
     log_verbose(config, ' '.join(args))
-    sys.stdout.flush()
-    sys.stderr.flush()
-    os.execvp(args[0], args)
+    if sys.platform != 'win32':
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os.execvp(args[0], args)
+    # Using execvp on Windows results in weird behavior,
+    # so keep using a subprocess here
+    try:
+        proc = subprocess.run(args)
+        return proc.returncode
+    except KeyboardInterrupt:
+        print('Dog received Ctrl+C')
+        return -1
 
 
 def docker_compose_run(config: DogConfig) -> int:

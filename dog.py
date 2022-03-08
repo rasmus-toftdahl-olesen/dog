@@ -557,7 +557,7 @@ def docker_run_volumes_from(config: DogConfig):
 
     async def run_all():
         tasks = [
-            run_volume_installer(name, image)
+            run_volume_installer(name.split(':')[0], image)
             for name, image in config[VOLUMES_FROM].items()
         ]
         await asyncio.gather(*tasks)

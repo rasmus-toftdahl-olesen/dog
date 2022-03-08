@@ -1,10 +1,11 @@
 import itertools
 import os
 import platform
+import subprocess
 import sys
 from collections.abc import Iterable
 from pathlib import Path, PureWindowsPath
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import pytest
 
@@ -46,6 +47,24 @@ class MockExecVp:
 def mock_execvp(monkeypatch):
     m = MockExecVp()
     monkeypatch.setattr(os, 'execvp', m.mock_execvp)
+    return m
+
+
+class MockSubprocess:
+    def __init__(self):
+        self.file = None
+        self.args = None
+
+    def mock_run(self, args):
+        self.file = args[0]
+        self.args = args
+        return subprocess.CompletedProcess(args=args, returncode=0)
+
+
+@pytest.fixture
+def mock_subprocess(monkeypatch):
+    m = MockSubprocess()
+    monkeypatch.setattr(subprocess, 'run', m.mock_run)
     return m
 
 
@@ -111,7 +130,9 @@ def flatten(container: Iterable) -> List:
 
 
 def assert_docker_std_cmdline(
-    exec_mock: MockExecVp, sudo_outside: bool = False, use_podman: bool = False
+    exec_mock: Union[MockExecVp, MockSubprocess],
+    sudo_outside: bool = False,
+    use_podman: bool = False,
 ) -> List[str]:
     expected_args = []
     if sudo_outside:
@@ -441,12 +462,12 @@ def mock_win32(monkeypatch, tmp_path, win_path, dog_config_contents: List[str]):
 
 
 def test_auto_mount_win32(
-    call_main, basic_dog_config, tmp_path, mock_execvp, monkeypatch
+    call_main, basic_dog_config, tmp_path, mock_subprocess, monkeypatch
 ):
     win_path = PureWindowsPath('C:\\tmp\\test')
     mock_win32(monkeypatch, tmp_path, win_path, ['image=my_image'])
     call_main('my_inside_cmd')
-    args_left = assert_docker_std_cmdline(mock_execvp)
+    args_left = assert_docker_std_cmdline(mock_subprocess)
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'my_image', ['my_inside_cmd']
     )
@@ -470,12 +491,12 @@ def test_auto_mount_win32(
 
 
 def test_perforce_win32(
-    call_main, basic_dog_config, tmp_path, mock_execvp, monkeypatch, home_temp_dir
+    call_main, basic_dog_config, tmp_path, mock_subprocess, monkeypatch, home_temp_dir
 ):
     win_path = PureWindowsPath('C:\\tmp\\test')
     mock_win32(monkeypatch, tmp_path, win_path, ['image=my_image', 'auto-mount=False'])
     call_main('my_inside_cmd')
-    args_left = assert_docker_std_cmdline(mock_execvp)
+    args_left = assert_docker_std_cmdline(mock_subprocess)
     args_left = assert_docker_image_and_cmd_inside_docker(
         args_left, 'my_image', ['my_inside_cmd']
     )

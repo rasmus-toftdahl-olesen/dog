@@ -538,6 +538,9 @@ def docker_run_volumes_from(config: DogConfig):
 
     import asyncio
 
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     async def run_volume_installer(name, image):
 
         proc = await asyncio.create_subprocess_exec(
@@ -559,7 +562,6 @@ def docker_run_volumes_from(config: DogConfig):
         ]
         await asyncio.gather(*tasks)
 
-    loop = asyncio.new_event_loop()
     loop.run_until_complete(run_all())
     loop.close()
 
@@ -609,6 +611,7 @@ def docker_run(config: DogConfig):
         sys.stdout.flush()
         sys.stderr.flush()
         os.execvp(args[0], args)
+        return 0  # execvp does not return but this makes testing easier
     # Using execvp on Windows results in weird behavior,
     # so keep using a subprocess here
     try:
@@ -883,7 +886,7 @@ def main(argv) -> int:
     if config[VOLUMES_FROM] and config[AUTO_RUN_VOLUMES_FROM]:
         docker_run_volumes_from(config)
 
-    docker_run(config)  # Does not return
+    return docker_run(config)
 
 
 def setup_tools_main():

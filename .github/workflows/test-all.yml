@@ -48,7 +48,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Check formatting with (ax)black
         run: |
-          black -q --check *.py tests/*.py
+          black --check *.py tests/*.py
       - name: Lint with flake8
         run: |
           flake8 . --count --show-source --statistics

@@ -11,11 +11,9 @@ readme = (root_dir / 'README.md').read_text()
 
 setup(
     name='dog',
-    version=dog.VERSION,
-    description=(
-        'dog is a simple wrapper for "docker run" to make it simple to call',
-        ' tools residing inside docker containers',
-    ),
+    version=dog.DOG_VERSION,
+    description='dog is a simple wrapper for "docker run" to make it simple to call'
+                ' tools residing inside docker containers',
     license='The Unlicense',
     long_description_content_type='text/markdown',
     long_description=readme,

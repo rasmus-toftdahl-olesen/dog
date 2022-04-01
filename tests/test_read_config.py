@@ -323,22 +323,19 @@ def test_usb_devices(
     monkeypatch.setattr(UsbDevices, 'get_bus_paths', lambda _, x: test_path(x))
 
     update_dog_config(tmp_path, {USB_DEVICES: {'dev1': dev1}})
-    assert call_read_config()[DEVICE] == usb_dev_path1[0]
+    assert call_read_config()[DEVICE] == usb_dev_path1
 
     update_dog_config(tmp_path, {USB_DEVICES: {'dev2': dev2}})
-    assert call_read_config()[DEVICE] == f'{usb_dev_path1[0]}:{usb_dev_path2[0]}'
+    assert call_read_config()[DEVICE] == usb_dev_path1 + usb_dev_path2
 
     update_dog_config(tmp_path, {USB_DEVICES: {'dev3': dev3}})
-    assert (
-        call_read_config()[DEVICE]
-        == f'{usb_dev_path1[0]}:{usb_dev_path2[0]}:{":".join(usb_dev_path3)}'
-    )
+    assert call_read_config()[DEVICE] == usb_dev_path1 + usb_dev_path2 + usb_dev_path3
 
     my_dev = '/dev/my_strange_dev'
     update_dog_config(tmp_path, {DOG: {DEVICE: my_dev}})
     assert (
         call_read_config()[DEVICE]
-        == f'{my_dev}:{usb_dev_path1[0]}:{usb_dev_path2[0]}:{":".join(usb_dev_path3)}'
+        == [f'{my_dev}'] + usb_dev_path1 + usb_dev_path2 + usb_dev_path3
     )
 
 

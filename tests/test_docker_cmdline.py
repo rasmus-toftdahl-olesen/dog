@@ -208,12 +208,16 @@ def assert_volumes_from_params(run_args: List[str], expected) -> List[str]:
     return args_left + rest_params
 
 
-def assert_device_param(run_args: List[str], expected_device: str) -> List[str]:
-    if not expected_device:
-        return run_args
-    device_params, args_left = split_single_cmdline_param('--device=', run_args)
-    assert ['--device={}'.format(expected_device)] == device_params
-    return args_left
+def assert_device_params(run_args: List[str], expected_devices: List[str]) -> List[str]:
+    device_params, args_left = split_single_cmdline_param(
+        '--device=', run_args, include_value=True
+    )
+    num_expected_device_params = len(expected_devices)
+    expected_device_params = [f'--device={device}' for device in expected_devices]
+    params = device_params[:num_expected_device_params]
+    rest_params = device_params[num_expected_device_params:]
+    assert params == expected_device_params
+    return args_left + rest_params
 
 
 def assert_interactive(run_args: List[str], expected_interactive: bool) -> List[str]:
@@ -521,11 +525,11 @@ def test_perforce_win32(
 @pytest.mark.parametrize(
     'device,usb_devices,expected_device_param',
     [
-        ('', {}, ''),
-        ('/dev/foo_bar', {}, '/dev/foo_bar'),
-        ('', {'dev1': '1111:aaaa'}, '/dev/bus/usb/001/004'),
-        ('', {'dev1': '1111:aaaa'}, '/dev/bus/usb/001/004:/dev/bus/usb/002/013'),
-        ('/dev/baz', {'dev1': '1111:aaaa'}, '/dev/baz:/dev/bus/usb/001/004'),
+        ('', {}, []),
+        ('/dev/foo_bar', {}, ['/dev/foo_bar']),
+        ('', {'dev1': '1111:aaaa'}, ['/dev/bus/usb/001/004']),
+        ('', {'dev1': '1111:aaaa'}, ['/dev/bus/usb/001/004', '/dev/bus/usb/002/013']),
+        ('/dev/baz', {'dev1': '1111:aaaa'}, ['/dev/baz', '/dev/bus/usb/001/004']),
     ],
 )
 def test_device(
@@ -542,10 +546,10 @@ def test_device(
     def test_path(x):
         assert x == usb_devices['dev1']
         if device:
-            usb_dev_paths = expected_device_param[len(device) + 1 :]
+            usb_dev_paths = expected_device_param[1:]
         else:
             usb_dev_paths = expected_device_param
-        return usb_dev_paths.split(':')
+        return usb_dev_paths
 
     monkeypatch.setattr(UsbDevices, 'get_bus_paths', lambda _, x: test_path(x))
 
@@ -562,7 +566,7 @@ def test_device(
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
-    args_left = assert_device_param(args_left, expected_device_param)
+    args_left = assert_device_params(args_left, expected_device_param)
     assert args_left == []
 
 

@@ -331,6 +331,8 @@ def read_config_file(dog_config_file: Path) -> DogConfig:
         dog_config[EXPOSED_DOG_VARIABLES] = list_from_config_entry(
             dog_config[EXPOSED_DOG_VARIABLES]
         )
+    if DEVICE in dog_config:
+        dog_config[DEVICE] = list_from_config_entry(dog_config[DEVICE])
     if VOLUMES in config:
         dog_config[VOLUMES] = volumes_parser[dog_config_file_version - 1](
             dict(config[VOLUMES])
@@ -598,7 +600,8 @@ def docker_run(config: DogConfig):
         args.extend(['--network', config[NETWORK]])
 
     if DEVICE in config:
-        args.append('--device={}'.format(config[DEVICE]))
+        for device in config[DEVICE]:
+            args.append('--device={}'.format(device))
 
     env_args = generate_env_arg_list(config)
     args.extend(env_args)
@@ -762,11 +765,10 @@ def handle_usb_devices(config):
             if dev_path:
                 usb_device_paths.extend(dev_path)
         if usb_device_paths:
-            device = ':'.join(usb_device_paths)
             if DEVICE in config:
-                config[DEVICE] = config[DEVICE] + ':' + device
+                config[DEVICE].extend(usb_device_paths)
             else:
-                config[DEVICE] = device
+                config[DEVICE] = usb_device_paths
 
 
 def handle_volumes(config):

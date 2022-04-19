@@ -65,6 +65,7 @@ VERBOSE = 'verbose'
 VERSION = 'version'
 VOLUMES = 'volumes'
 VOLUMES_FROM = 'volumes-from'
+VOLUMES_FROM_SILENT = 'volumes-from-silent'
 WIN32_CWD = 'win32-cwd'
 
 DOG_CONFIG_SECTIONS = [DOG, USB_DEVICES, VOLUMES, VOLUMES_FROM]
@@ -100,6 +101,7 @@ DEFAULT_CONFIG = {
     VERSION: DOG_VERSION,
     VOLUMES: {},
     VOLUMES_FROM: {},
+    VOLUMES_FROM_SILENT: False,
 }
 
 
@@ -535,7 +537,24 @@ def generate_env_arg_list(config: DogConfig) -> List[str]:
     return args
 
 
+def docker_container_names(config: DogConfig) -> List[str]:
+    args = [docker_cmd(config), 'container', 'ls', '-a', '--format={{.Names}}']
+    proc = subprocess.run(
+        args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, universal_newlines=True
+    )
+    return proc.stdout.splitlines()
+
+
 def docker_run_volumes_from(config: DogConfig):
+    if not config[VOLUMES_FROM_SILENT]:
+        container_names = docker_container_names(config)
+        volumes_from_names = set(
+            name.split(':')[0] for name in config[VOLUMES_FROM].keys()
+        )
+        missing_containers = volumes_from_names.difference(container_names)
+        for name in missing_containers:
+            print('Dog creating volumes_from container: {} ...'.format(name))
+
     cmd = docker_cmd(config)
 
     import asyncio

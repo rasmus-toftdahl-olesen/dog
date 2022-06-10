@@ -73,7 +73,6 @@ SUBST_NAME_RE = re.compile(r'\${([^}]+)}')
 
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
 
-
 DEFAULT_CONFIG = {
     ARGS: ['id'],
     AS_ROOT: False,
@@ -189,7 +188,7 @@ def list_from_config_entry(entry: str) -> List[str]:
 
 
 def get_user_env_vars(
-    config_user_env_vars: str, allow_empty: bool
+        config_user_env_vars: str, allow_empty: bool
 ) -> Dict[str, Union[str, List[str]]]:
     env_var_list = list_from_config_entry(config_user_env_vars)
     user_env_vars = {}
@@ -483,17 +482,25 @@ def get_env_config() -> DogConfig:
         }
     else:
         import grp
-
+        uid = os.getuid()
         gid = os.getgid()
-        return {
-            UID: os.getuid(),
-            GID: gid,
-            HOME: os.getenv('HOME'),
-            USER: os.getenv('USER'),
-            HOSTNAME: platform.node(),
-            GROUP: grp.getgrgid(gid).gr_name,
-            CWD: Path.cwd(),
-        }
+        hostname = platform.node()
+        group = grp.getgrgid(gid).gr_name
+        cwd = Path.cwd()
+
+        env_config = {UID: uid,
+                      GID: gid,
+                      HOSTNAME: hostname,
+                      GROUP: group,
+                      CWD: cwd}
+
+        home_env = os.getenv('HOME')
+        user_env = os.getenv('USER')
+        # if home_env:
+        env_config[HOME] = home_env
+        # if user_env:
+        env_config[USER] = user_env
+        return env_config
 
 
 def find_mount_point(p: Path):
@@ -705,7 +712,7 @@ def update_config(existing_config: DogConfig, new_config: DogConfig):
 
 
 def update_config_from_files(
-    existing_config: DogConfig, config_from_files: Deque[Tuple[DogConfig, Path]]
+        existing_config: DogConfig, config_from_files: Deque[Tuple[DogConfig, Path]]
 ):
     for conf in config_from_files:
         update_config(existing_config, conf[0])

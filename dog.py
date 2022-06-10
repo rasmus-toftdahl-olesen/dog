@@ -188,7 +188,7 @@ def list_from_config_entry(entry: str) -> List[str]:
 
 
 def get_user_env_vars(
-        config_user_env_vars: str, allow_empty: bool
+    config_user_env_vars: str, allow_empty: bool
 ) -> Dict[str, Union[str, List[str]]]:
     env_var_list = list_from_config_entry(config_user_env_vars)
     user_env_vars = {}
@@ -712,7 +712,7 @@ def update_config(existing_config: DogConfig, new_config: DogConfig):
 
 
 def update_config_from_files(
-        existing_config: DogConfig, config_from_files: Deque[Tuple[DogConfig, Path]]
+    existing_config: DogConfig, config_from_files: Deque[Tuple[DogConfig, Path]]
 ):
     for conf in config_from_files:
         update_config(existing_config, conf[0])

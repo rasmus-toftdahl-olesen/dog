@@ -482,17 +482,14 @@ def get_env_config() -> DogConfig:
         }
     else:
         import grp
+
         uid = os.getuid()
         gid = os.getgid()
         hostname = platform.node()
         group = grp.getgrgid(gid).gr_name
         cwd = Path.cwd()
 
-        env_config = {UID: uid,
-                      GID: gid,
-                      HOSTNAME: hostname,
-                      GROUP: group,
-                      CWD: cwd}
+        env_config = {UID: uid, GID: gid, HOSTNAME: hostname, GROUP: group, CWD: cwd}
 
         home_env = os.getenv('HOME')
         user_env = os.getenv('USER')

@@ -496,10 +496,10 @@ def get_env_config() -> DogConfig:
 
         home_env = os.getenv('HOME')
         user_env = os.getenv('USER')
-        # if home_env:
-        env_config[HOME] = home_env
-        # if user_env:
-        env_config[USER] = user_env
+        if home_env:
+            env_config[HOME] = home_env
+        if user_env:
+            env_config[USER] = user_env
         return env_config
 
 

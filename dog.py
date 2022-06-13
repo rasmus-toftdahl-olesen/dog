@@ -470,7 +470,14 @@ def get_env_config() -> DogConfig:
     hostname = platform.node()
     if sys.platform == 'win32':
         cwd = Path.cwd()
-        env_config = {UID: 1000, GID: 1000, HOSTNAME: hostname, GROUP: 'nodoggroup', CWD: win32_to_dog_unix(cwd), WIN32_CWD: cwd}
+        env_config = {
+            UID: 1000,
+            GID: 1000,
+            HOSTNAME: hostname,
+            GROUP: 'nodoggroup',
+            CWD: win32_to_dog_unix(cwd),
+            WIN32_CWD: cwd,
+        }
         user = os.getenv('USERNAME')
         if user:
             env_config[HOME] = '/home/' + user

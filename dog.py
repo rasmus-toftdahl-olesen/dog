@@ -467,25 +467,20 @@ def win32_to_dog_unix(win_path: Path) -> str:
 
 
 def get_env_config() -> DogConfig:
+    hostname = platform.node()
     if sys.platform == 'win32':
-        user = os.getenv('USERNAME')
         cwd = Path.cwd()
-        return {
-            UID: 1000,
-            GID: 1000,
-            HOME: '/home/' + user,
-            USER: user,
-            HOSTNAME: platform.node(),
-            GROUP: 'nodoggroup',
-            CWD: win32_to_dog_unix(cwd),
-            WIN32_CWD: cwd,
-        }
+        env_config = {UID: 1000, GID: 1000, HOSTNAME: hostname, GROUP: 'nodoggroup', CWD: win32_to_dog_unix(cwd), WIN32_CWD: cwd}
+        user = os.getenv('USERNAME')
+        if user:
+            env_config[HOME] = '/home/' + user
+            env_config[USER] = user
+        return env_config
     else:
         import grp
 
         uid = os.getuid()
         gid = os.getgid()
-        hostname = platform.node()
         group = grp.getgrgid(gid).gr_name
         cwd = Path.cwd()
 

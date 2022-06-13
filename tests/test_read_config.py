@@ -67,7 +67,8 @@ def user_config_file(home_temp_dir, config):
 
 @pytest.mark.skipif(
     is_windows(),
-    reason='This test does not work on windows since it uses the grp python module which does not exist on windows',
+    reason='This test does not work on windows since it uses'
+    'the grp python module which does not exist on windows',
 )
 def test_default_config(
     call_read_config, basic_dog_config_with_image, tmp_path, dummy_dog_args

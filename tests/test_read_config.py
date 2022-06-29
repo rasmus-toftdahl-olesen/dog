@@ -1,6 +1,7 @@
-import grp
 import os
 import platform
+import sys
+
 import pytest
 from conftest import ACTUAL_DOG_VERSION, update_dog_config
 from dog import (
@@ -39,6 +40,7 @@ from dog import (
     VOLUMES_FROM,
     read_config,
 )
+from tests.conftest import is_windows
 
 
 @pytest.fixture
@@ -65,9 +67,16 @@ def user_config_file(home_temp_dir, config):
     update_dog_config(conf_file, config)
 
 
+@pytest.mark.skipif(
+    is_windows(),
+    reason='This test does not work on windows since it uses'
+    'the grp python module which does not exist on windows',
+)
 def test_default_config(
     call_read_config, basic_dog_config_with_image, tmp_path, dummy_dog_args
 ):
+    import grp
+
     config = call_read_config()
     # Values not modified by environment
     assert config[AS_ROOT] is False
@@ -666,3 +675,26 @@ def test_subst_for_usb_devices(
     )
 
     assert call_read_config()[USB_DEVICES] == {'dev1': 'abcd:4242'}
+
+
+def test_env_without_user_win32(
+    call_read_config, basic_dog_config_with_image, tmp_path, monkeypatch
+):
+    # Disable auto-mount to make this test pass on unix- otherwise the test
+    # will end up trying to use a unix path as a window path during auto-mount
+    update_dog_config(tmp_path, {DOG: {AUTO_MOUNT: 'False'}})
+    monkeypatch.setattr(sys, 'platform', 'win32')
+    monkeypatch.delenv('USERNAME', raising=False)
+    assert call_read_config()[USER] == 'nobody'
+
+
+@pytest.mark.skipif(
+    is_windows(),
+    reason='This test does not work on windows since it uses the'
+    'grp python module which does not exist on windows',
+)
+def test_env_without_user_unix(
+    call_read_config, basic_dog_config_with_image, tmp_path, monkeypatch
+):
+    monkeypatch.delenv('USER', raising=False)
+    assert call_read_config()[USER] == 'nobody'

@@ -73,7 +73,6 @@ SUBST_NAME_RE = re.compile(r'\${([^}]+)}')
 
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
 
-
 DEFAULT_CONFIG = {
     ARGS: ['id'],
     AS_ROOT: False,
@@ -468,32 +467,39 @@ def win32_to_dog_unix(win_path: Path) -> str:
 
 
 def get_env_config() -> DogConfig:
+    hostname = platform.node()
     if sys.platform == 'win32':
-        user = os.getenv('USERNAME')
         cwd = Path.cwd()
-        return {
+        env_config = {
             UID: 1000,
             GID: 1000,
-            HOME: '/home/' + user,
-            USER: user,
-            HOSTNAME: platform.node(),
+            HOSTNAME: hostname,
             GROUP: 'nodoggroup',
             CWD: win32_to_dog_unix(cwd),
             WIN32_CWD: cwd,
         }
+        user = os.getenv('USERNAME')
+        if user:
+            env_config[HOME] = '/home/' + user
+            env_config[USER] = user
+        return env_config
     else:
         import grp
 
+        uid = os.getuid()
         gid = os.getgid()
-        return {
-            UID: os.getuid(),
-            GID: gid,
-            HOME: os.getenv('HOME'),
-            USER: os.getenv('USER'),
-            HOSTNAME: platform.node(),
-            GROUP: grp.getgrgid(gid).gr_name,
-            CWD: Path.cwd(),
-        }
+        group = grp.getgrgid(gid).gr_name
+        cwd = Path.cwd()
+
+        env_config = {UID: uid, GID: gid, HOSTNAME: hostname, GROUP: group, CWD: cwd}
+
+        home_env = os.getenv('HOME')
+        user_env = os.getenv('USER')
+        if home_env:
+            env_config[HOME] = home_env
+        if user_env:
+            env_config[USER] = user_env
+        return env_config
 
 
 def find_mount_point(p: Path):

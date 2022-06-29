@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import List, Deque, Dict, Tuple, Union
 
 # Version of dog
-DOG_VERSION = 13
+DOG_VERSION = 14
 MAX_DOG_CONFIG_VERSION = 2
 
 # Constants for consistent naming of dog variables, etc.

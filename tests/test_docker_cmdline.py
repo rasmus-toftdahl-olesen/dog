@@ -22,6 +22,7 @@ from dog import (
     DOG_CONFIG_FILE_VERSION,
     DogConfig,
     IMAGE,
+    INIT,
     NETWORK,
     USB_DEVICES,
     USE_PODMAN,
@@ -227,6 +228,13 @@ def assert_interactive(run_args: List[str], expected_interactive: bool) -> List[
     return args_left
 
 
+def assert_init(run_args: List[str], expected_init: bool) -> List[str]:
+    init_param, args_left = split_single_cmdline_param('--init', run_args)
+    expected_init_param = ['--init'] if expected_init else []
+    assert expected_init_param == init_param
+    return args_left
+
+
 def assert_env_params(run_args: List[str], expected_env_values: List[str]) -> List[str]:
     env_params, args_left = split_single_cmdline_param(
         '-e', run_args, include_value=True
@@ -252,6 +260,10 @@ def std_assert_volume_params(tmp_path, args_left):
 
 def std_assert_interactive(args_left):
     return assert_interactive(args_left, True)
+
+
+def std_assert_init(args_left):
+    return assert_init(args_left, True)
 
 
 def std_assert_env_params(home_temp_dir, args_left):
@@ -310,6 +322,7 @@ def test_network(
     args_left = assert_network_param(args_left, network)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     assert args_left == []
 
@@ -336,6 +349,7 @@ def test_simple_docker_cmdline(
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     assert args_left == []
 
@@ -354,6 +368,7 @@ def test_images(
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     assert args_left == []
 
@@ -372,6 +387,7 @@ def test_commands_in_docker(
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     assert args_left == []
 
@@ -402,6 +418,7 @@ def test_sudo_outside(
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     assert args_left == []
 
@@ -436,6 +453,7 @@ def test_auto_mount(
     else:
         args_left = assert_volume_params(args_left, [])
     args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     assert args_left == []
 
@@ -479,6 +497,7 @@ def test_auto_mount_win32(
     args_left = std_assert_hostname_param(args_left)
     args_left = assert_volume_params(args_left, [('/C', 'C:\\')])
     args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
     args_left = assert_env_params(
         args_left,
         [
@@ -507,6 +526,7 @@ def test_perforce_win32(
     args_left = assert_workdir_param(args_left, '/C/tmp/test')
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
     args_left = assert_env_params(
         args_left,
         [
@@ -565,6 +585,7 @@ def test_device(
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     args_left = assert_device_params(args_left, expected_device_param)
     assert args_left == []
@@ -600,6 +621,7 @@ def test_volumes(
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     args_left = assert_volume_params(args_left, expected_volumes)
     args_left = std_assert_volume_params(tmp_path, args_left)
@@ -638,7 +660,32 @@ def test_volumes_from(
     args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
     args_left = std_assert_hostname_param(args_left)
     args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     args_left = std_assert_volume_params(tmp_path, args_left)
     args_left = assert_volumes_from_params(args_left, volumes_from.keys())
+    assert args_left == []
+
+
+@pytest.mark.parametrize('init', [True, False])
+def test_init(
+    basic_dog_config_with_image,
+    call_main,
+    tmp_path,
+    mock_execvp,
+    home_temp_dir,
+    init: bool,
+):
+    update_dog_config(tmp_path, {DOG: {INIT: init}})
+    call_main('echo', 'foo')
+    args_left = assert_docker_std_cmdline(mock_execvp)
+    args_left = assert_docker_image_and_cmd_inside_docker(
+        args_left, 'debian:latest', ['echo', 'foo']
+    )
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
+    args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_volume_params(tmp_path, args_left)
+    args_left = std_assert_interactive(args_left)
+    args_left = assert_init(args_left, init)
+    args_left = std_assert_env_params(home_temp_dir, args_left)
     assert args_left == []

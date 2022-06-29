@@ -42,6 +42,7 @@ GROUP = 'group'
 HOME = 'home'
 HOSTNAME = 'hostname'
 IMAGE = 'image'
+INIT = 'init'
 INCLUDE_DOG_CONFIG = 'include-dog-config'
 INTERACTIVE = 'interactive'
 MINIMUM_VERSION = 'minimum-version'
@@ -84,6 +85,7 @@ DEFAULT_CONFIG = {
     GROUP: 'nogroup',
     HOME: '/home/nobody',
     HOSTNAME: 'dog_docker',
+    INIT: True,
     INTERACTIVE: True,
     PORTS: {},
     PULL: False,
@@ -617,6 +619,9 @@ def docker_run(config: DogConfig):
 
     if config[INTERACTIVE]:
         args.append('-i')
+
+    if config[INIT]:
+        args.append('--init')
 
     if config[TERMINAL]:
         args.append('-t')

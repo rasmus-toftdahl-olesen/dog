@@ -5,6 +5,7 @@ import subprocess
 import sys
 from collections.abc import Iterable
 from pathlib import Path, PureWindowsPath
+from subprocess import CompletedProcess
 from typing import List, Tuple, Union
 
 import pytest
@@ -23,6 +24,7 @@ from dog import (
     DogConfig,
     IMAGE,
     INIT,
+    MAC_ADDRESS,
     NETWORK,
     USB_DEVICES,
     USE_PODMAN,
@@ -43,11 +45,25 @@ class MockExecVp:
         self.file = file
         self.args = args
 
+    def mock_subprocess_run(self, args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, universal_newlines=True):
+        self.file = args[0]
+        self.args = args
+        stdout_obj = None
+        if stdout == subprocess.PIPE:
+            class MyStdout():
+                def splitlines(self):
+                    return [f'This is the output of {args}']
+            stdout_obj = MyStdout()
+        return CompletedProcess(args, returncode=0, stdout=stdout_obj)
+
 
 @pytest.fixture
 def mock_execvp(monkeypatch):
     m = MockExecVp()
-    monkeypatch.setattr(os, 'execvp', m.mock_execvp)
+    if sys.platform != 'win32':
+        monkeypatch.setattr(os, 'execvp', m.mock_execvp)
+    else:
+        monkeypatch.setattr(subprocess, 'run', m.mock_subprocess_run)
     return m
 
 
@@ -142,7 +158,7 @@ def assert_docker_std_cmdline(
     expected_args.extend([docker_cmd, 'run', '--rm'])
     assert exec_mock.file == expected_args[0]
     assert exec_mock.args[: len(expected_args)] == expected_args
-    return exec_mock.args[len(expected_args) :]
+    return exec_mock.args[len(expected_args):]
 
 
 def assert_docker_image_and_cmd_inside_docker(
@@ -264,6 +280,12 @@ def std_assert_interactive(args_left):
 
 def std_assert_init(args_left):
     return assert_init(args_left, True)
+
+
+def assert_mac_address_param(run_args: List[str], expected_mac_address: str) -> List[str]:
+    mac_address_params, args_left = split_single_cmdline_param('--mac-address', run_args, include_value=True)
+    assert ['--mac-address', expected_mac_address] == mac_address_params
+    return args_left
 
 
 def std_assert_env_params(home_temp_dir, args_left):
@@ -688,4 +710,27 @@ def test_init(
     args_left = std_assert_interactive(args_left)
     args_left = assert_init(args_left, init)
     args_left = std_assert_env_params(home_temp_dir, args_left)
+    assert args_left == []
+
+
+def test_mac_address(
+    basic_dog_config_with_image,
+    call_main,
+    tmp_path,
+    mock_execvp,
+    home_temp_dir
+):
+    append_to_dog_config(tmp_path, [f'{MAC_ADDRESS}=AA:BB:CC:DD:EE:FF'])
+    call_main('echo', 'foo')
+    args_left = assert_docker_std_cmdline(mock_execvp)
+    args_left = assert_docker_image_and_cmd_inside_docker(
+        args_left, 'debian:latest', ['echo', 'foo']
+    )
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
+    args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
+    args_left = std_assert_env_params(home_temp_dir, args_left)
+    args_left = std_assert_volume_params(tmp_path, args_left)
+    args_left = assert_mac_address_param(args_left, 'AA:BB:CC:DD:EE:FF')
     assert args_left == []

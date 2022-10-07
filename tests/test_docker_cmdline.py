@@ -45,14 +45,22 @@ class MockExecVp:
         self.file = file
         self.args = args
 
-    def mock_subprocess_run(self, args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, universal_newlines=True):
+    def mock_subprocess_run(
+        self,
+        args,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        universal_newlines=True,
+    ):
         self.file = args[0]
         self.args = args
         stdout_obj = None
         if stdout == subprocess.PIPE:
-            class MyStdout():
+
+            class MyStdout:
                 def splitlines(self):
                     return [f'This is the output of {args}']
+
             stdout_obj = MyStdout()
         return CompletedProcess(args, returncode=0, stdout=stdout_obj)
 
@@ -158,7 +166,7 @@ def assert_docker_std_cmdline(
     expected_args.extend([docker_cmd, 'run', '--rm'])
     assert exec_mock.file == expected_args[0]
     assert exec_mock.args[: len(expected_args)] == expected_args
-    return exec_mock.args[len(expected_args):]
+    return exec_mock.args[len(expected_args) :]
 
 
 def assert_docker_image_and_cmd_inside_docker(
@@ -282,8 +290,12 @@ def std_assert_init(args_left):
     return assert_init(args_left, True)
 
 
-def assert_mac_address_param(run_args: List[str], expected_mac_address: str) -> List[str]:
-    mac_address_params, args_left = split_single_cmdline_param('--mac-address', run_args, include_value=True)
+def assert_mac_address_param(
+    run_args: List[str], expected_mac_address: str
+) -> List[str]:
+    mac_address_params, args_left = split_single_cmdline_param(
+        '--mac-address', run_args, include_value=True
+    )
     assert ['--mac-address', expected_mac_address] == mac_address_params
     return args_left
 
@@ -714,11 +726,7 @@ def test_init(
 
 
 def test_mac_address(
-    basic_dog_config_with_image,
-    call_main,
-    tmp_path,
-    mock_execvp,
-    home_temp_dir
+    basic_dog_config_with_image, call_main, tmp_path, mock_execvp, home_temp_dir
 ):
     append_to_dog_config(tmp_path, [f'{MAC_ADDRESS}=AA:BB:CC:DD:EE:FF'])
     call_main('echo', 'foo')

@@ -1,0 +1,18 @@
+name: k8s-for-dog
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v1
+        with:
+          repository: rasmus-toftdahl-olesen/dog/k8s-for-dog
+          registry: docker.pkg.github.com
+          tag_with_ref: true
+          path: tests/dockers/k8s-for-dog
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}

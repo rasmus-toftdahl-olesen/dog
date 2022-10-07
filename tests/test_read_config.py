@@ -110,7 +110,6 @@ def test_default_config(
     assert config[HOSTNAME] == platform.node()
     assert config[UID] == os.getuid()
     assert config[USER] == os.getenv('USER')
-    assert config[MAC_ADDRESS] is None
     assert config[VOLUMES] == {''.join(tmp_path.parts[:2]): ''.join(tmp_path.parts[:2])}
 
 

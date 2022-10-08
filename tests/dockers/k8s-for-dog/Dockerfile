@@ -1,7 +1,10 @@
 FROM ubuntu:jammy
 LABEL maintainer=rasmus.toftdahl.olesen@gmail.com
+
+ADD Cisco_Umbrella_Root_CA.cer /etc/ssl/certs/
 RUN apt-get update \
     && apt-get install -y \
+    ca-certificates \
     curl \
     sudo \
     make \

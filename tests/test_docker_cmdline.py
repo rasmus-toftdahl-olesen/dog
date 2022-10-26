@@ -17,6 +17,7 @@ from conftest import (
     ACTUAL_DOG_VERSION,
 )
 from dog import (
+    ADDITIONAL_DOCKER_RUN_PARAMS,
     DEVICE,
     DOG,
     DOG_CONFIG_FILE_VERSION,
@@ -325,6 +326,35 @@ def test_network(
     args_left = std_assert_init(args_left)
     args_left = std_assert_env_params(home_temp_dir, args_left)
     assert args_left == []
+
+
+@pytest.mark.parametrize(
+    'additional_run_params',
+    ['--mac-address="00:11:22:33:44:55"', '--security-opt label=disable'],
+)
+def test_additional_run_params(
+    basic_dog_config_with_image,
+    call_main,
+    tmp_path,
+    mock_execvp,
+    home_temp_dir,
+    additional_run_params: str,
+):
+    update_dog_config(
+        tmp_path, {DOG: {ADDITIONAL_DOCKER_RUN_PARAMS: additional_run_params}}
+    )
+    call_main('echo', 'foo')
+    args_left = assert_docker_std_cmdline(mock_execvp)
+    args_left = assert_docker_image_and_cmd_inside_docker(
+        args_left, 'debian:latest', ['echo', 'foo']
+    )
+    args_left = assert_workdir_param(args_left, get_workdir(tmp_path))
+    args_left = std_assert_hostname_param(args_left)
+    args_left = std_assert_volume_params(tmp_path, args_left)
+    args_left = std_assert_interactive(args_left)
+    args_left = std_assert_init(args_left)
+    args_left = std_assert_env_params(home_temp_dir, args_left)
+    assert args_left == additional_run_params.split()
 
 
 @pytest.mark.parametrize('use_podman', [False, True])

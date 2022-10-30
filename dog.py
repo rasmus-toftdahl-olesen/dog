@@ -18,6 +18,7 @@ DOG_VERSION = 14
 MAX_DOG_CONFIG_VERSION = 2
 
 # Constants for consistent naming of dog variables, etc.
+ADDITIONAL_DOCKER_RUN_PARAMS = 'additional-docker-run-params'
 ARGS = 'args'
 AS_ROOT = 'as-root'
 AUTO_MOUNT = 'auto-mount'
@@ -75,6 +76,7 @@ SUBST_NAME_RE = re.compile(r'\${([^}]+)}')
 DogConfig = Dict[str, Union[str, int, bool, Path, List[str], Dict[str, str]]]
 
 DEFAULT_CONFIG = {
+    ADDITIONAL_DOCKER_RUN_PARAMS: '',
     ARGS: ['id'],
     AS_ROOT: False,
     AUTO_MOUNT: True,
@@ -635,6 +637,9 @@ def docker_run(config: DogConfig):
 
     env_args = generate_env_arg_list(config)
     args.extend(env_args)
+
+    if config[ADDITIONAL_DOCKER_RUN_PARAMS]:
+        args.extend(config[ADDITIONAL_DOCKER_RUN_PARAMS].split())
 
     args.append(config[FULL_IMAGE])
     args.extend(config[ARGS])

@@ -22,7 +22,7 @@ docker image.
 
 ## Documentation
 
-Usage, Configuration and how it works is [all available here](http://halfdans.net/dog/).
+Usage, Configuration and how it works is [all available here](http://rtol.org/dog/).
 
 
 ## Installation

@@ -53,7 +53,7 @@ As an example, consider the following configuration entry:
 full-image = ${docker-registry-url}/build-docker:${tools_build-docker-version}
 ```
 
-Here `${docker-registry-url}` references the `docker-registry-url` entry under `[dog]`, and `${tools_build-docker-version}` references the `build-docker-version` entry under `[tools]`.
+Here `${docker-registry-url}` references the `docker-registry-url` entry under `[dog]`, and `${tools_build-docker-version}` references the `build-docker-version` entry under some custom `[tools]` section.
 
 ## Sections of `dog.config`
 

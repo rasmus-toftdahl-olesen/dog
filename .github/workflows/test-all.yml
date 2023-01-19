@@ -12,7 +12,7 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       matrix:
         # We want to support python 3.5 and forward (since python 3.5 is the default python on current debian stable)
@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           # Setup the python version under test
           python-version: ${{ matrix.python-version }}

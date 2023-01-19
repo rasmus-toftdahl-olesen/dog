@@ -1,23 +1,23 @@
 # Configuration
 
 ## Table of contents
-1) [Effective configuration](#effective-configuration)
-   1) [Example](#example)
-2) [Value interpolation](#value-interpolation)
-3) [Sections of `dog.config`](#sections-of-dogconfig)
-   1) [The `[dog]` section](#the-dog-section)
-   2) [The `[ports]` section](#the-ports-section)
-   3) [The `[volumes]` section](#the-volumes-section)
-   4) [The `[volumes-from]` section](#the-volumes-from-section)
-   5) [The `[usb-devices]` section](#the-usb-devices-section)
+1. [Effective configuration](#effective-configuration)
+   1. [Example](#example)
+2. [Value interpolation](#value-interpolation)
+3. [Sections of `dog.config`](#sections-of-dogconfig)
+   1. [The `[dog]` section](#the-dog-section)
+   2. [The `[ports]` section](#the-ports-section)
+   3. [The `[volumes]` section](#the-volumes-section)
+   4. [The `[volumes-from]` section](#the-volumes-from-section)
+   5. [The `[usb-devices]` section](#the-usb-devices-section)
 
 ## Effective configuration
 The container that `dog` runs its given command in is spun up based on the contents of one or more [INI-formatted](https://en.wikipedia.org/wiki/INI_file) `dog.config` files.
 The effective configuration is the union of entries from the following sources, with entries from former sources taking precedence:
-  1) Command-line arguments.
-  2) `dog.config` in the current working directory or closest parent directory with such file.
-  3) `dog.config` in the user's home directory (if present).
-  4) Default values.
+  1. Command-line arguments.
+  2. `dog.config` in the current working directory or closest parent directory with such file.
+  3. `dog.config` in the user's home directory (if present).
+  4. Default values.
 
 A `dog.config` can furthermore declare a parent `dog.config` that it is based on, meaning source (2) and (3) themselves are unions of configurations;
 see the `include-dog-config` entry under [the `[dog]` section](#the-dog-section).

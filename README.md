@@ -1,5 +1,7 @@
 # dog
 
+![Dog logo](/docs/dog-logo-small.png)
+
 [![test Status](https://github.com/rasmus-toftdahl-olesen/dog/workflows/test/badge.svg)](https://github.com/rasmus-toftdahl-olesen/dog/actions?query=workflow%3Atest)
 [![centos-for-dog](https://github.com/rasmus-toftdahl-olesen/dog/workflows/centos-for-dog/badge.svg)](https://github.com/rasmus-toftdahl-olesen/dog/actions?query=workflow%3Acentos-for-dog)
 [![package Status](https://github.com/rasmus-toftdahl-olesen/dog/workflows/package/badge.svg)](https://github.com/rasmus-toftdahl-olesen/dog/actions?query=workflow%3Apackage)

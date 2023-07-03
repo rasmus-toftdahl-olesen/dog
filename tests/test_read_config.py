@@ -698,7 +698,7 @@ def test_env_without_user_unix(
 ):
     import pwd
 
-    def my_pwd_getpwuid():
+    def my_pwd_getpwuid(uid):
         raise KeyError('This is the test_env_without_user_unix test')
 
     monkeypatch.delenv('USER', raising=False)

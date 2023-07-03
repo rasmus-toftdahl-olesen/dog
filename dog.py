@@ -494,13 +494,21 @@ def get_env_config() -> DogConfig:
         uid = os.getuid()
         gid = os.getgid()
         group = grp.getgrgid(gid).gr_name
-        user_pwd = pwd.getpwuid(uid)
-        username = user_pwd.pw_name
-        home = user_pwd.pw_dir
         cwd = Path.cwd()
 
-        env_config = {UID: uid, GID: gid, HOSTNAME: hostname, GROUP: group, CWD: cwd, USER: username, HOME: home}
+        env_config = {UID: uid, GID: gid, HOSTNAME: hostname, GROUP: group, CWD: cwd}
 
+        home_env = os.getenv('HOME')
+        user_env = os.getenv('USER')
+        if home_env:
+            env_config[HOME] = home_env
+        else:
+            env_config[HOME] = pwd.getpwuid(uid).pw_dir
+
+        if user_env:
+            env_config[USER] = user_env
+        else:
+            env_config[USER] = pwd.getpwuid(uid).pw_name
         return env_config
 
 

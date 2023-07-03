@@ -698,9 +698,9 @@ def test_env_without_user_unix(
 ):
     import pwd
 
-    def my_pwd_getgetpwuid():
+    def my_pwd_getpwuid():
         raise KeyError('This is the test_env_without_user_unix test')
 
     monkeypatch.delenv('USER', raising=False)
-    monkeypatch.setattr(pwd, 'getgetpwuid', my_pwd_getgetpwuid)
+    monkeypatch.setattr(pwd, 'getpwuid', my_pwd_getpwuid)
     assert call_read_config()[USER] == 'nobody'

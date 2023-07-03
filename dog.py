@@ -503,12 +503,19 @@ def get_env_config() -> DogConfig:
         if home_env:
             env_config[HOME] = home_env
         else:
-            env_config[HOME] = pwd.getpwuid(uid).pw_dir
+            try:
+                env_config[HOME] = pwd.getpwuid(uid).pw_dir
+            except KeyError:
+                pass
 
         if user_env:
             env_config[USER] = user_env
         else:
-            env_config[USER] = pwd.getpwuid(uid).pw_name
+            try:
+                env_config[USER] = pwd.getpwuid(uid).pw_name
+            except KeyError:
+                pass
+
         return env_config
 
 

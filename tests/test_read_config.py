@@ -696,5 +696,10 @@ def test_env_without_user_win32(
 def test_env_without_user_unix(
     call_read_config, basic_dog_config_with_image, tmp_path, monkeypatch
 ):
+    import pwd
+
+    def my_pwd_getgetpwuid():
+        raise KeyError('This is the test_env_without_user_unix test')
     monkeypatch.delenv('USER', raising=False)
+    monkeypatch.setattr(pwd, 'getgetpwuid', my_pwd_getgetpwuid)
     assert call_read_config()[USER] == 'nobody'

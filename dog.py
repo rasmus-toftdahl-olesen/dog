@@ -489,6 +489,7 @@ def get_env_config() -> DogConfig:
         return env_config
     else:
         import grp
+        import pwd
 
         uid = os.getuid()
         gid = os.getgid()
@@ -501,8 +502,20 @@ def get_env_config() -> DogConfig:
         user_env = os.getenv('USER')
         if home_env:
             env_config[HOME] = home_env
+        else:
+            try:
+                env_config[HOME] = pwd.getpwuid(uid).pw_dir
+            except KeyError:
+                pass
+
         if user_env:
             env_config[USER] = user_env
+        else:
+            try:
+                env_config[USER] = pwd.getpwuid(uid).pw_name
+            except KeyError:
+                pass
+
         return env_config
 
 

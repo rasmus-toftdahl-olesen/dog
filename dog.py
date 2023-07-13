@@ -27,10 +27,6 @@ CONFIG_FILE = 'dog.config'
 CWD = 'cwd'
 DEVICE = 'device'
 DOCKER = 'docker'
-DOCKER_COMPOSE = 'docker-compose'
-DOCKER_COMPOSE_FILE = 'docker-compose-file'
-DOCKER_COMPOSE_MINIMUM_VERSION = 'docker-compose-minimum-version'
-DOCKER_COMPOSE_SERVICE = 'docker-compose-service'
 DOCKER_MINIMUM_VERSION = 'docker-minimum-version'
 DOG = 'dog'
 DOG_CONFIG_FILE_VERSION = 'dog-config-file-version'
@@ -438,7 +434,7 @@ def parse_command_line_args(own_name: str, argv: list) -> DogConfig:
         dest=SANITY_CHECK,
         action='store_const',
         const=True,
-        help='Perform sanity check, i.e. is required docker-compose version available',
+        help='Perform sanity check, i.e. is required docker version available',
     )
 
     # Insert the needed -- to separate dog args with the rest of the commands
@@ -530,8 +526,6 @@ def docker_cmd(config: DogConfig) -> str:
 
 
 def docker_pull(config: DogConfig):
-    if DOCKER_COMPOSE_FILE in config:
-        fatal_error('{} is not compatible with pull'.format(DOCKER_COMPOSE_FILE))
     try:
         args = [SUDO] if config[SUDO_OUTSIDE_DOCKER] else []
         args.append(docker_cmd(config))
@@ -673,53 +667,6 @@ def docker_run(config: DogConfig):
         return -1
 
 
-def docker_compose_run(config: DogConfig) -> int:
-    assert config[INTERACTIVE], 'non-interactive mode not supported for docker-compose'
-
-    args = ['sudo'] if config[SUDO_OUTSIDE_DOCKER] else []
-    args.extend(
-        [
-            DOCKER_COMPOSE,
-            '-f',
-            str(Path(config[DOG_CONFIG_PATH]) / config[DOCKER_COMPOSE_FILE]),
-        ]
-    )
-    cleanup_args = args.copy()
-    if config[VERBOSE]:
-        args += ['--verbose', '--log-level', 'DEBUG']
-    args += ['run', '--rm', '-w', str(config[CWD])]
-    cleanup_args += ['rm', '-f']
-
-    if not config[TERMINAL]:
-        args.append('-T')
-
-    for inside, outside in config[VOLUMES].items():
-        args += ['-v', outside + ':' + inside]
-
-    for inside, outside in config[PORTS].items():
-        args += ['-p', outside + ':' + inside]
-
-    args.extend(generate_env_arg_list(config))
-
-    args.append(config[DOCKER_COMPOSE_SERVICE])
-
-    args.extend(config[ARGS])
-
-    log_verbose(config, ' '.join(args))
-    try:
-        docker_compose_env = dict(os.environ)
-        for name in config[EXPOSED_DOG_VARIABLES]:
-            env_name = 'DOG_{}'.format(name.upper().replace('-', '_'))
-            docker_compose_env[env_name] = str(config[name])
-        proc = subprocess.run(args, env=docker_compose_env)
-        stderr_out = None if config[VERBOSE] else subprocess.DEVNULL
-        subprocess.run(cleanup_args, stdout=stderr_out, stderr=stderr_out)
-        return proc.returncode
-    except KeyboardInterrupt:
-        print('Dog received Ctrl+C')
-        return -1
-
-
 def update_config(existing_config: DogConfig, new_config: DogConfig):
     """Merge two DogConfigs.
 
@@ -782,20 +729,7 @@ def handle_auto_mount(config):
 
 
 def handle_full_image(config):
-    if DOCKER_COMPOSE_FILE in config:
-        if FULL_IMAGE in config or IMAGE in config:
-            fatal_error(
-                '{} and {} both found in {}'.format(
-                    DOCKER_COMPOSE_FILE, IMAGE, CONFIG_FILE
-                )
-            )
-        elif DOCKER_COMPOSE_SERVICE not in config:
-            fatal_error(
-                '{} must be specified when {} is in {}'.format(
-                    DOCKER_COMPOSE_SERVICE, DOCKER_COMPOSE_FILE, CONFIG_FILE
-                )
-            )
-    elif FULL_IMAGE not in config:
+    if FULL_IMAGE not in config:
         if IMAGE not in config:
             fatal_error('No {} specified in {}'.format(IMAGE, CONFIG_FILE))
         if REGISTRY in config:
@@ -868,12 +802,8 @@ def get_tool_version(tool: str) -> str:
 
 
 def perform_sanity_check(config: DogConfig) -> int:
-    if DOCKER_COMPOSE_FILE in config:
-        min_version_config = DOCKER_COMPOSE_MINIMUM_VERSION
-        tool = DOCKER_COMPOSE
-    else:
-        min_version_config = DOCKER_MINIMUM_VERSION
-        tool = docker_cmd(config)
+    min_version_config = DOCKER_MINIMUM_VERSION
+    tool = docker_cmd(config)
     minimum_version = get_minimum_version_from_config(min_version_config, config)
     tool_version = get_tool_version(tool)
     if tool_version < minimum_version:
@@ -929,9 +859,6 @@ def main(argv) -> int:
 
     if config[PULL]:
         docker_pull(config)
-
-    if DOCKER_COMPOSE_FILE in config:
-        return docker_compose_run(config)
 
     if config[VOLUMES_FROM] and config[AUTO_RUN_VOLUMES_FROM]:
         docker_run_volumes_from(config)

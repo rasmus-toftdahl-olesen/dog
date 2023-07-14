@@ -20,6 +20,7 @@ from dog import (
     HOSTNAME,
     INCLUDE_DOG_CONFIG,
     INTERACTIVE,
+    MAC_ADDRESS,
     MAX_DOG_CONFIG_VERSION,
     MINIMUM_VERSION,
     NETWORK,
@@ -704,3 +705,10 @@ def test_env_without_user_unix(
     monkeypatch.delenv('USER', raising=False)
     monkeypatch.setattr(pwd, 'getpwuid', my_pwd_getpwuid)
     assert call_read_config()[USER] == 'nobody'
+
+
+def test_mac_address_in_dog_config(
+    call_read_config, basic_dog_config_with_image, tmp_path
+):
+    update_dog_config(tmp_path, {DOG: {MAC_ADDRESS: 'AA:BB:CC:DD:EE:FF'}})
+    assert call_read_config()[MAC_ADDRESS] == 'AA:BB:CC:DD:EE:FF'

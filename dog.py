@@ -42,6 +42,7 @@ IMAGE = 'image'
 INIT = 'init'
 INCLUDE_DOG_CONFIG = 'include-dog-config'
 INTERACTIVE = 'interactive'
+MAC_ADDRESS = 'mac-address'
 MINIMUM_VERSION = 'minimum-version'
 NETWORK = 'network'
 PODMAN = 'podman'
@@ -637,6 +638,9 @@ def docker_run(config: DogConfig):
 
     if NETWORK in config:
         args.extend(['--network', config[NETWORK]])
+
+    if MAC_ADDRESS in config:
+        args.extend(['--mac-address', config[MAC_ADDRESS]])
 
     if DEVICE in config:
         for device in config[DEVICE]:

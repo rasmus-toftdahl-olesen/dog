@@ -11,6 +11,8 @@ from conftest import (
 )
 from pathlib import Path
 
+from tests.conftest import is_windows
+
 
 @pytest.fixture
 def call_shell(call_centos7, tmp_path, my_dog, monkeypatch):
@@ -81,7 +83,10 @@ def test_verbose(call_centos7, capfd):
 
 def test_stdin_testing_works(call_shell, capstrip):
     """ Sanity check stdin capture before it's used to test dog."""
-    call_shell('echo hello world | cat -')
+    if is_windows():
+        call_shell('echo hello world | more')
+    else:
+        call_shell('echo hello world | cat -')
     captured = capstrip.get()
     assert captured == ('hello world', '')
 

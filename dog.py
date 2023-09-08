@@ -18,19 +18,15 @@ DOG_VERSION = 15
 MAX_DOG_CONFIG_VERSION = 2
 
 # Constants for consistent naming of dog variables, etc.
+# Configuration keys (documented externally in docs/Configuration.md)
 ADDITIONAL_DOCKER_RUN_PARAMS = 'additional-docker-run-params'
-ARGS = 'args'
 AS_ROOT = 'as-root'
 AUTO_MOUNT = 'auto-mount'
 AUTO_RUN_VOLUMES_FROM = 'auto-run-volumes-from'
-CONFIG_FILE = 'dog.config'
 CWD = 'cwd'
 DEVICE = 'device'
-DOCKER = 'docker'
 DOCKER_MINIMUM_VERSION = 'docker-minimum-version'
-DOG = 'dog'
 DOG_CONFIG_FILE_VERSION = 'dog-config-file-version'
-DOG_CONFIG_PATH = 'dog-config-path'
 DOG_CONFIG_PATH_RESOLVE_SYMLINK = 'dog-config-path-resolve-symlink'
 EXPOSED_DOG_VARIABLES = 'exposed-dog-variables'
 FULL_IMAGE = 'full-image'
@@ -39,31 +35,39 @@ GROUP = 'group'
 HOME = 'home'
 HOSTNAME = 'hostname'
 IMAGE = 'image'
-INIT = 'init'
 INCLUDE_DOG_CONFIG = 'include-dog-config'
+INIT = 'init'
 INTERACTIVE = 'interactive'
 MINIMUM_VERSION = 'minimum-version'
 NETWORK = 'network'
-PODMAN = 'podman'
-PORTS = 'ports'
 PULL = 'pull'
 REGISTRY = 'registry'
-SANITY_CHECK = 'sanity-check'
 SANITY_CHECK_ALWAYS = 'sanity-check-always'
-SUDO = 'sudo'
 SUDO_OUTSIDE_DOCKER = 'sudo-outside-docker'
 TERMINAL = 'terminal'
 UID = 'uid'
-USB_DEVICES = 'usb-devices'
+USE_PODMAN = 'use-podman'
 USER = 'user'
 USER_ENV_VARS = 'user-env-vars'
 USER_ENV_VARS_IF_SET = 'user-env-vars-if-set'
-USE_PODMAN = 'use-podman'
 VERBOSE = 'verbose'
-VERSION = 'version'
+VOLUMES_FROM_SILENT = 'volumes-from-silent'
+# Constants (documented externally in docs/Configuration.md)
+DOG_CONFIG_PATH = 'dog-config-path'
+# Sections
+DOG = 'dog'
+PORTS = 'ports'
 VOLUMES = 'volumes'
 VOLUMES_FROM = 'volumes-from'
-VOLUMES_FROM_SILENT = 'volumes-from-silent'
+USB_DEVICES = 'usb-devices'
+# Miscellaneous
+ARGS = 'args'
+CONFIG_FILE = 'dog.config'
+DOCKER = 'docker'
+PODMAN = 'podman'
+SANITY_CHECK = 'sanity-check'
+SUDO = 'sudo'
+VERSION = 'version'
 WIN32_CWD = 'win32-cwd'
 
 DOG_CONFIG_SECTIONS = [DOG, USB_DEVICES, VOLUMES, VOLUMES_FROM]
@@ -92,10 +96,10 @@ DEFAULT_CONFIG = {
     TERMINAL: False,
     UID: 1000,
     USB_DEVICES: {},
+    USE_PODMAN: False,
     USER: 'nobody',
     USER_ENV_VARS: {},
     USER_ENV_VARS_IF_SET: {},
-    USE_PODMAN: False,
     VERBOSE: False,
     VERSION: DOG_VERSION,
     VOLUMES: {},
